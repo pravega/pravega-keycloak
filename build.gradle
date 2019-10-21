@@ -2,4 +2,32 @@ buildscript {
 }
 
 subprojects {
+    apply plugin: 'java-library'
+
+    repositories {
+        jcenter()
+    }
+
+    sourceCompatibility = '1.8'
+
+    dependencies {
+        implementation platform('org.keycloak.bom:keycloak-adapter-bom:6.0.1')
+    }
+}
+
+project('client') {
+    configurations {
+        implementation {
+            exclude group: 'org.projectlombok', module: 'lombok'
+        }
+    }
+    dependencies {
+        api "io.pravega:pravega-shared-authplugin:${pravegaVersion}"
+        compileOnly "io.pravega:pravega-client:${pravegaVersion}"
+        implementation 'org.keycloak:keycloak-authz-client'
+        implementation 'org.keycloak:keycloak-adapter-core'
+        compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
+        testImplementation "junit:junit:${junitVersion}"
+        testImplementation "org.mockito:mockito-core:${mockitoVersion}"
+    }
 }

@@ -1,2 +1,2 @@
-
 rootProject.name = 'pravega-keycloak'
+include 'client'
