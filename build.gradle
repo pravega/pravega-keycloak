@@ -1,7 +1,14 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
+
 buildscript {
 }
 
+plugins {
+    id 'com.github.johnrengelman.shadow' version '5.1.0'
+}
+
 subprojects {
+    apply plugin: 'com.github.johnrengelman.shadow'
     apply plugin: 'java-library'
 
     repositories {
@@ -11,7 +18,7 @@ subprojects {
     sourceCompatibility = '1.8'
 
     dependencies {
-        implementation platform('org.keycloak.bom:keycloak-adapter-bom:6.0.1')
+        implementation platform("org.keycloak.bom:keycloak-adapter-bom:${keycloakVersion}")
     }
 }
 
@@ -21,13 +28,25 @@ project('client') {
             exclude group: 'org.projectlombok', module: 'lombok'
         }
     }
+
     dependencies {
-        api "io.pravega:pravega-shared-authplugin:${pravegaVersion}"
+        compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
+        compileOnly "io.pravega:pravega-shared-authplugin:${pravegaVersion}"
         compileOnly "io.pravega:pravega-client:${pravegaVersion}"
         implementation 'org.keycloak:keycloak-authz-client'
         implementation 'org.keycloak:keycloak-adapter-core'
-        compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
         testImplementation "junit:junit:${junitVersion}"
         testImplementation "org.mockito:mockito-core:${mockitoVersion}"
     }
+
+    shadowJar {
+        mergeServiceFiles()
+    }
+
+    task relocateShadowJar(type: ConfigureShadowRelocation) {
+        target = tasks.shadowJar
+        prefix = "io.pravega.keycloak"
+    }
+
+    tasks.shadowJar.dependsOn tasks.relocateShadowJar
 }
