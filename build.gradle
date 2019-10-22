@@ -1,24 +1,81 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocation
 
 buildscript {
+    repositories {
+        jcenter()
+    }
 }
 
 plugins {
     id 'com.github.johnrengelman.shadow' version '5.1.0'
+    id "com.jfrog.bintray" version "1.8.4"
 }
 
 subprojects {
-    apply plugin: 'com.github.johnrengelman.shadow'
     apply plugin: 'java-library'
+    apply plugin: 'com.github.johnrengelman.shadow'
+    apply plugin: 'maven-publish'
+    apply plugin: 'com.jfrog.bintray'
+    apply plugin: 'signing'
 
     repositories {
         jcenter()
     }
 
+    group "io.pravega"
+    version buildVersion
     sourceCompatibility = '1.8'
+
+    task sourcesJar(type: Jar) {
+        from sourceSets.main.allJava
+        archiveClassifier = 'sources'
+    }
 
     dependencies {
         implementation platform("org.keycloak.bom:keycloak-adapter-bom:${keycloakVersion}")
+    }
+
+//    signing {
+//        sign publishing.publications
+//    }
+
+    publishing {
+        publications {
+            lib(MavenPublication) {
+                pom {
+                    url = 'http://pravega.io'
+                    scm {
+                        url = 'https://github.com/pravega/pravega-keycloak/tree/master'
+                        connection = 'scm:git:git://github.com/pravega/pravega-keycloak.git'
+                        developerConnection = 'scm:git:https://github.com/pravega/pravega-keycloak.git'
+                    }
+                    licenses {
+                        license {
+                            name = 'The Apache License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    bintray {
+        user = publishUsername
+        key = publishPassword
+        pkg {
+            repo = bintrayRepoName
+            userOrg = bintrayOrgName
+            licenses = ['Apache-2.0']
+            publish = true
+            vcsUrl = 'https://github.com/pravega/pravega-keycloak.git'
+            version {
+                gpg {
+                    sign = true
+                }
+            }
+        }
+        publications = ['lib']
     }
 }
 
@@ -26,6 +83,9 @@ project('client') {
     configurations {
         implementation {
             exclude group: 'org.projectlombok', module: 'lombok'
+        }
+        testImplementation {
+            extendsFrom compileOnly
         }
     }
 
@@ -35,18 +95,33 @@ project('client') {
         compileOnly "io.pravega:pravega-client:${pravegaVersion}"
         implementation 'org.keycloak:keycloak-authz-client'
         implementation 'org.keycloak:keycloak-adapter-core'
+
         testImplementation "junit:junit:${junitVersion}"
         testImplementation "org.mockito:mockito-core:${mockitoVersion}"
-    }
-
-    shadowJar {
-        mergeServiceFiles()
     }
 
     task relocateShadowJar(type: ConfigureShadowRelocation) {
         target = tasks.shadowJar
         prefix = "io.pravega.keycloak"
     }
-
+    shadowJar {
+        mergeServiceFiles()
+    }
+    jar.enabled = false
     tasks.shadowJar.dependsOn tasks.relocateShadowJar
+    tasks.build.dependsOn tasks.shadowJar
+
+    publishing {
+        publications {
+            lib(MavenPublication) {
+                artifactId = 'pravega-keycloak-client'
+                artifact source: shadowJar, classifier: null
+                artifact sourcesJar
+                pom {
+                    name = 'Pravega Keycloak Adapter (Client)'
+                }
+            }
+        }
+    }
+    bintray.pkg.name = "io.pravega:pravega-keycloak-client"
 }
