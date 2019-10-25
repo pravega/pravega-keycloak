@@ -11,7 +11,6 @@
 package io.pravega.keycloak.client;
 
 import io.pravega.client.stream.impl.Credentials;
-import org.keycloak.adapters.KeycloakDeployment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,11 +32,6 @@ public class PravegaKeycloakCredentials implements Credentials {
         LOG.info("Loaded Keycloak Credentials");
     }
 
-    // for testing only
-    public PravegaKeycloakCredentials(KeycloakDeployment deployment) {
-        kc = new KeycloakAuthzClient(deployment);
-    }
-
     @Override
     public String getAuthenticationType() {
         return BEARER;
@@ -51,7 +45,7 @@ public class PravegaKeycloakCredentials implements Credentials {
 
     private void init() {
         if (kc == null) {
-            kc = KeycloakAuthzClient.client();
+            kc = KeycloakAuthzClient.builder().build();
         }
     }
 }

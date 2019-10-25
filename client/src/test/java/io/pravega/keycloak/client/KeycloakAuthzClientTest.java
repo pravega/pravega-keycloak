@@ -13,94 +13,134 @@ package io.pravega.keycloak.client;
 import io.pravega.keycloak.client.KeycloakAuthzClient.TokenCache;
 import io.pravega.keycloak.client.helpers.AccessTokenBuilder;
 import io.pravega.keycloak.client.helpers.AccessTokenIssuer;
-import org.apache.http.HttpStatus;
 import org.junit.Test;
-import org.keycloak.adapters.KeycloakDeployment;
 import org.keycloak.authorization.client.AuthzClient;
+import org.keycloak.authorization.client.ClientAuthenticator;
+import org.keycloak.authorization.client.Configuration;
 import org.keycloak.authorization.client.util.HttpResponseException;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.AccessTokenResponse;
+import org.keycloak.representations.idm.authorization.AuthorizationResponse;
+import org.keycloak.util.BasicAuthHelper;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import java.util.function.Supplier;
+import java.util.function.BiFunction;
 
+import static io.pravega.keycloak.client.KeycloakAuthzClient.DEFAULT_PRAVEGA_CONTROLLER_CLIENT_ID;
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 public class KeycloakAuthzClientTest {
     private static final String SVC_ACCOUNT_JSON_FILE = getResourceFile("service-account.json");
-    private static final KeycloakDeployment DEPLOYMENT = KeycloakDeploymentResolver.resolve(SVC_ACCOUNT_JSON_FILE).get();
+//    private static final KeycloakDeployment DEPLOYMENT = KeycloakDeploymentResolver.resolve(SVC_ACCOUNT_JSON_FILE).get();
+
+    private static final AccessTokenIssuer ISSUER = new AccessTokenIssuer();
 
     @Test
-    public void testKeyCloakAuthzClientCachedtoken() {
+    public void getRPT_caching() {
+        AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
+        TokenCache tokenCache = spy(new TokenCache(0));
 
-        AuthzClient client = Mockito.mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
-        // always generated an valid token Response.
-        Supplier<AccessTokenResponse> generatedResponse = () -> {
-            String rawToken = token(UUID.randomUUID().toString(), false);
-            AccessTokenResponse response = new AccessTokenResponse();
-            response.setToken(rawToken);
-            response.setTokenType("bearer");
-            return response;
-        };
-        Mockito.when(client.obtainAccessToken()).thenReturn(generatedResponse.get());
-        Mockito.when(client.authorization().authorize().getToken()).thenReturn("RPT TOKEN");
+        // configure mocks
+        AccessTokenResponse accessToken = new AccessTokenResponse();
+        accessToken.setToken("TOKEN");
+        when(client.obtainAccessToken()).thenReturn(accessToken);
+        AuthorizationResponse response = authResponse(false);
+        when(client.authorization(any()).authorize(any())).thenReturn(response);
 
-        //null token
-        TokenCache tokenCache = new TokenCache();
-        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(DEPLOYMENT)
-                .withAuthzClientSupplier((s) -> client)
-                .withTokenCache(tokenCache);
-        authzClient.getRPT();
-        Mockito.verify(client, Mockito.times(1)).obtainAccessToken();
+        // cache miss
+        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache);
+        String rpt1 = authzClient.getRPT();
+        assertEquals(response.getToken(), rpt1);
 
-        //generate a expired token.
-        String expiredToken = token(UUID.randomUUID().toString(), true);
-        tokenCache.setToken(expiredToken);
-        authzClient.getRPT();
-        Mockito.verify(client, Mockito.times(2)).obtainAccessToken();
-        String token = tokenCache.getToken();
-        assertNotEquals(expiredToken, token);
+        // cache hit
+        String rpt2 = authzClient.getRPT();
+        assertEquals(response.getToken(), rpt2);
 
-        //should not call obtainAccessToken()
-        String goodToken = token(UUID.randomUUID().toString(), false);
-        tokenCache.setToken(goodToken);
-        authzClient.getRPT();
-        Mockito.verify(client, Mockito.times(2)).obtainAccessToken();
-        token = tokenCache.getToken();
-        assertEquals(goodToken, token);
+        verify(tokenCache, times(2)).getIfValid();
+        verify(client.authorization(any()), times(1)).authorize(any());
+        verify(tokenCache, times(1)).update(any());
     }
 
     @Test(expected = KeycloakAuthenticationException.class)
-    public void checkRethrowAuthenticationException() {
-        HttpResponseException e = new HttpResponseException("Authentication Failed",
-                HttpStatus.SC_BAD_REQUEST, null, null);
-        AuthzClient client = Mockito.mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
-        Mockito.when(client.obtainAccessToken()).thenThrow(e);
+    public void getRPT_error_authn() {
+        AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
+        TokenCache tokenCache = spy(new TokenCache(0));
+        when(client.obtainAccessToken()).thenThrow(new HttpResponseException("", 400, "", null));
 
-        TokenCache tokenCache = new TokenCache();
-        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(DEPLOYMENT)
-                .withAuthzClientSupplier((s) -> client)
-                .withTokenCache(tokenCache);
+        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache);
         authzClient.getRPT();
     }
 
-    @Test(expected = KeycloakAuthorizationException.class)
-    public void checkRethrowAuthorizationException() {
-        HttpResponseException inner = new HttpResponseException("Authorization Failed",
-                HttpStatus.SC_BAD_REQUEST, null, null);
-        RuntimeException e = new RuntimeException(inner);
-        AuthzClient client = Mockito.mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
-        Mockito.when(client.obtainAccessToken().getToken()).thenReturn("access_token");
-        Mockito.when(client.authorization("access_token")).thenThrow(e);
+    @Test(expected = HttpResponseException.class)
+    public void getRPT_error_other() {
+        AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
+        TokenCache tokenCache = spy(new TokenCache(0));
+        when(client.obtainAccessToken()).thenThrow(new HttpResponseException("", 500, "", null));
 
-        TokenCache cachedToken = new TokenCache();
-        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(DEPLOYMENT)
-                .withAuthzClientSupplier((s) -> client)
-                .withTokenCache(cachedToken);
-
+        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache);
         authzClient.getRPT();
+    }
+
+    @Test
+    public void tokenCache_expiration() {
+        AuthorizationResponse response;
+        TokenCache tokenCache = new TokenCache(0);
+
+        // cache miss
+        response = tokenCache.getIfValid();
+        assertNull(response);
+
+        // cache hit
+        response = authResponse(token(UUID.randomUUID().toString(), false));
+        tokenCache.update(response);
+        assertSame(response, tokenCache.getIfValid());
+
+        // cache expiration
+        response = authResponse(token(UUID.randomUUID().toString(), true));
+        tokenCache.update(response);
+        assertNull(tokenCache.getIfValid());
+    }
+
+    @Test
+    public void builder_defaultAudience() {
+        TestSupplier supplier = new TestSupplier();
+        KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE).build();
+        assertEquals(DEFAULT_PRAVEGA_CONTROLLER_CLIENT_ID, supplier.configuration.getResource());
+    }
+
+    @Test
+    public void builder_setAudience() {
+        TestSupplier supplier = new TestSupplier();
+        KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE)
+                .withAudience("builder_setAudience").build();
+        assertEquals("builder_setAudience", supplier.configuration.getResource());
+    }
+
+    @Test(expected = KeycloakConfigurationException.class)
+    public void builder_noConfig() {
+        TestSupplier supplier = new TestSupplier();
+        KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).build();
+    }
+
+    @Test
+    public void builder_authenticator() {
+        TestSupplier supplier = new TestSupplier();
+        KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE).build();
+
+        Map<String, List<String>> requestParams = new HashMap<>();
+        Map<String, String> requestHeaders = new HashMap<>();
+        supplier.clientAuthenticator.configureClientCredentials(requestParams, requestHeaders);
+        assertTrue(requestHeaders.containsKey("Authorization"));
+        assertEquals(
+                requestHeaders.get("Authorization"),
+                BasicAuthHelper.createHeader("test-client", "b3f202cb-29fe-4d13-afb8-15e787c6e56c"));
     }
 
     @Test
@@ -110,6 +150,19 @@ public class KeycloakAuthzClientTest {
         assertFalse(token.isExpired());
         assertEquals(token.getSubject(), "00000000-0000-0000-0000-000000000001");
         assertEquals(token.getPreferredUsername(), "user-1");
+    }
+
+    private AuthorizationResponse authResponse(String rawToken) {
+        AuthorizationResponse response = new AuthorizationResponse();
+        response.setToken(rawToken);
+        return response;
+    }
+
+    private AuthorizationResponse authResponse(boolean expired) {
+        String rawToken = token(UUID.randomUUID().toString(), expired);
+        AuthorizationResponse response = new AuthorizationResponse();
+        response.setToken(rawToken);
+        return response;
     }
 
     private String token(String id, boolean expired) {
@@ -123,6 +176,19 @@ public class KeycloakAuthzClientTest {
     }
 
     private static String getResourceFile(String resourceName) {
-        return new File(KeycloakDeploymentResolverTest.class.getClassLoader().getResource(resourceName).getFile()).getAbsolutePath();
+        return new File(KeycloakAuthzClientTest.class.getClassLoader().getResource(resourceName).getFile()).getAbsolutePath();
+    }
+
+    class TestSupplier implements BiFunction<Configuration, ClientAuthenticator, AuthzClient> {
+        Configuration configuration;
+        ClientAuthenticator clientAuthenticator;
+        final AuthzClient client = mock(AuthzClient.class);
+
+        @Override
+        public AuthzClient apply(Configuration configuration, ClientAuthenticator clientAuthenticator) {
+            this.configuration = configuration;
+            this.clientAuthenticator = clientAuthenticator;
+            return client;
+        }
     }
 }

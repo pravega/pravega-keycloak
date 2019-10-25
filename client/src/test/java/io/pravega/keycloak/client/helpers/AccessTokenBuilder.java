@@ -28,6 +28,10 @@ public class AccessTokenBuilder {
 
     private final AccessToken accessToken;
 
+    public static AccessTokenBuilder initToken() {
+        return new AccessTokenBuilder();
+    }
+
     public AccessTokenBuilder() {
         accessToken = new AccessToken();
         accessToken.setAuthorization(new AccessToken.Authorization());
@@ -39,6 +43,11 @@ public class AccessTokenBuilder {
         return this;
     }
 
+    public AccessTokenBuilder issuedFor(String clientId) {
+        accessToken.issuedFor(clientId);
+        return this;
+    }
+
     public AccessTokenBuilder subject(String userId) {
         accessToken.subject(userId);
         return this;
@@ -46,6 +55,11 @@ public class AccessTokenBuilder {
 
     public AccessTokenBuilder username(String userId) {
         accessToken.setOtherClaims("preferred_username", userId);
+        return this;
+    }
+
+    public AccessTokenBuilder expiration(int timestampInSeconds) {
+        accessToken.expiration(timestampInSeconds);
         return this;
     }
 
