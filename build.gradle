@@ -19,7 +19,10 @@ buildscript {
 plugins {
     id 'com.github.johnrengelman.shadow' version '5.1.0'
     id "com.jfrog.bintray" version "1.8.4"
+    id 'org.ajoberstar.grgit' version '3.1.1'
 }
+
+apply from: "$rootDir/gradle/version.gradle"
 
 subprojects {
     apply plugin: 'java-library'
@@ -33,7 +36,6 @@ subprojects {
     }
 
     group "io.pravega"
-    version buildVersion
     sourceCompatibility = '1.8'
 
     task sourcesJar(type: Jar) {
