@@ -24,6 +24,10 @@ plugins {
 
 apply from: "$rootDir/gradle/version.gradle"
 
+allprojects {
+    apply plugin: 'jacoco'
+}
+
 subprojects {
     apply plugin: 'java-library'
     apply plugin: 'com.github.johnrengelman.shadow'
@@ -46,6 +50,14 @@ subprojects {
     dependencies {
         implementation platform("org.keycloak.bom:keycloak-adapter-bom:${keycloakVersion}")
     }
+
+    jacocoTestReport {
+        reports {
+            xml.enabled true
+            html.enabled false
+        }
+    }
+    check.dependsOn jacocoTestReport
 
 //    signing {
 //        sign publishing.publications

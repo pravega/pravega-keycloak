@@ -20,8 +20,8 @@ jobs:
       if: type IN (push, pull_request)
       install: ./gradlew assemble
       script: ./gradlew check
-#      after_success:
-#        - bash <(curl -s https://codecov.io/bash) -t c82b7db7-70b1-4264-9b8a-b74c077e974d
+      after_success:
+        - bash <(curl -s https://codecov.io/bash) -t c82b7db7-70b1-4264-9b8a-b74c077e974d
 
 #    - stage: javadocs
 #      install: echo "Building javadocs"
