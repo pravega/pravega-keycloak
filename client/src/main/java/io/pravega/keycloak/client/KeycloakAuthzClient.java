@@ -143,11 +143,6 @@ public class KeycloakAuthzClient {
             this.response = response;
         }
 
-        public void invalidate() {
-            this.token = null;
-            this.response = null;
-        }
-
         boolean isTokenTimeToLiveSufficient() {
             return token.getExpiration() - tokenMinimumTimeToLiveSecs > Time.currentTime();
         }

@@ -48,8 +48,7 @@ public class KeycloakAuthzClientTest {
         TokenCache tokenCache = spy(new TokenCache(0));
 
         // configure mocks
-        AccessTokenResponse accessToken = new AccessTokenResponse();
-        accessToken.setToken("TOKEN");
+        AccessTokenResponse accessToken = accessTokenResponse();
         when(client.obtainAccessToken()).thenReturn(accessToken);
         AuthorizationResponse response = authResponse(false);
         when(client.authorization(any()).authorize(any())).thenReturn(response);
@@ -73,6 +72,17 @@ public class KeycloakAuthzClientTest {
         AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
         TokenCache tokenCache = spy(new TokenCache(0));
         when(client.obtainAccessToken()).thenThrow(new HttpResponseException("", 400, "", null));
+
+        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache);
+        authzClient.getRPT();
+    }
+    @Test(expected = KeycloakAuthorizationException.class)
+    public void getRPT_error_authz() {
+        AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
+        TokenCache tokenCache = spy(new TokenCache(0));
+        AccessTokenResponse accessToken = accessTokenResponse();
+        when(client.obtainAccessToken()).thenReturn(accessToken);
+        when(client.authorization(any()).authorize(any())).thenThrow(new HttpResponseException("", 400, "", null));
 
         KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache);
         authzClient.getRPT();
@@ -150,6 +160,12 @@ public class KeycloakAuthzClientTest {
         assertFalse(token.isExpired());
         assertEquals(token.getSubject(), "00000000-0000-0000-0000-000000000001");
         assertEquals(token.getPreferredUsername(), "user-1");
+    }
+
+    private AccessTokenResponse accessTokenResponse() {
+        AccessTokenResponse acr = new AccessTokenResponse();
+        acr.setToken("TOKEN");
+        return acr;
     }
 
     private AuthorizationResponse authResponse(String rawToken) {
