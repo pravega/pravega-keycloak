@@ -19,6 +19,7 @@ buildscript {
 plugins {
     id 'com.github.johnrengelman.shadow' version '5.1.0'
     id "com.jfrog.bintray" version "1.8.4"
+    id 'com.jfrog.artifactory' version '4.10.0'
     id 'org.ajoberstar.grgit' version '3.1.1'
 }
 
@@ -32,7 +33,7 @@ subprojects {
     apply plugin: 'java-library'
     apply plugin: 'com.github.johnrengelman.shadow'
     apply plugin: 'maven-publish'
-    apply plugin: 'com.jfrog.bintray'
+    apply plugin: 'com.jfrog.artifactory'
     apply plugin: 'signing'
 
     repositories {
@@ -82,6 +83,24 @@ subprojects {
                 }
             }
         }
+    }
+
+    artifactory {
+        contextUrl = publishUrl
+        publish {
+            repository {
+                repoKey = publishRepo
+                username = publishUsername
+                password = publishPassword
+            }
+            defaults {
+                publications('lib')
+            }
+        }
+        resolve {
+            repoKey = 'jcenter'
+        }
+        clientConfig.info.setBuildNumber(project.version)
     }
 
     bintray {
