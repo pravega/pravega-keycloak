@@ -7,7 +7,8 @@ You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 -->
-# Keycloak Security Plugin for Pravega [![Build Status](https://travis-ci.com/pravega/pravega-keycloak.svg?branch=master)](https://travis-ci.com/pravega/pravega-keycloak/builds) [![codecov](https://codecov.io/gh/pravega/pravega-keycloak/branch/master/graph/badge.svg)](https://codecov.io/gh/pravega/pravega-keycloak) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0) [![Version](https://img.shields.io/github/v/release/pravega/pravega-keycloak.svg)](https://github.com/pravega/pravega-keycloak/releases)
+# Keycloak Security Plugin for Pravega 
+[![Build Status](https://travis-ci.com/pravega/pravega-keycloak.svg?branch=master)](https://travis-ci.com/pravega/pravega-keycloak/builds) [![codecov](https://codecov.io/gh/pravega/pravega-keycloak/branch/master/graph/badge.svg)](https://codecov.io/gh/pravega/pravega-keycloak) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0) [![Version](https://img.shields.io/github/v/release/pravega/pravega-keycloak.svg)](https://github.com/pravega/pravega-keycloak/releases)
 
 ## Introduction
 This repository contains the source code for the `pravega-keycloak-client` library, which extends Pravega
