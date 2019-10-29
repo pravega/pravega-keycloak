@@ -89,7 +89,12 @@ subprojects {
         contextUrl = publishUrl
         publish {
             repository {
-                repoKey = publishRepo
+                if (publishRepo?.trim()) {
+                    repoKey = publishRepo
+                }
+                else if ("https://oss.jfrog.org" == "$publishUrl") {
+                    repoKey = project.version.endsWith("-SNAPSHOT") ? "oss-snapshot-local" : "oss-release-local"
+                }
                 username = publishUsername
                 password = publishPassword
             }
