@@ -24,6 +24,7 @@ For example, in Gradle:
 ```
 repositories {
     jcenter()
+    mavenCentral()
 }
 dependencies {
     implementation "io.pravega:pravega-client:0.6.0"
