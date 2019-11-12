@@ -24,7 +24,7 @@ jobs:
         - bash <(curl -s https://codecov.io/bash) -t c82b7db7-70b1-4264-9b8a-b74c077e974d
 
     - stage: publish
-      if: (branch = master OR branch =~ /^release-/) AND type NOT IN (push, pull_request)
+      if: (branch = master OR branch =~ /^release-/) AND type NOT IN (pull_request)
       env:
         - secure: "b0bjalNxVONIKDkRPVbhtVE+gbCsSYyrAOH1roGANkJzLM45ha6rQn7vbu673dtl5ZBl5M7D/MNrpGcqkFLNkitCI68vS5u/AYj3/zJ1ARowXvuzsey585ncDySPvSa4SJIyF1QZsxI7VD1rEMO5Ix8osPsfLPbCjHioIjmXeaUJ67rNcjfKcUhFANi7VeT/qrkP0NdZ+o/frxiUl7BwgaFEcQL+jLwbI6vc4T0FB9VUH/bANDNOdR7c0pyzkf/uSAv8R+PLUu1c2DEaBSlmXsI6ec90S+1rBCwPQdOQbxJMcJgxQNJxazI40G/nM+ZJz8TGDeyAcL3SKb41MwpdhVKahNotiYDma/1APcOB2NjxJYpY796cODdO+j6uC4xW1Uh8Im45OPnqeo07/o9+Djg0t5Dk0rcCar5EEFk6MYAwbaWD4vwCi4pgdneUktlhRW5+GXy1jhQCepJ8alSuEKxN1hTu3/4/Gb41wtV8gNuXKYIxniigLeSu5Vj5nP24y8kG1XcKlM0UwfTcj4TZ6W0/9ssgSXnhNPR60j2GUymx3n9Hx8jlA25XM1X8pJbwDfpI4Dp6oDOnLHoGJoE4y0g8XeMEdfgFeyg8d47Zo4bLZFvhP8kqMTzkTUR76+e5pbiCYH0DTASEyzcIBVSyGw3rPThPldSezjnX3IQsE2I="
         - secure: "OSIHX2cBMi0FhBDI0SLUxhqqBaSX3tOOKVIrysjo+snlrXGntAyv8yXe3ppHQWZpxdF3juLzMh3d9D8BDIw0ghBvFoHHkJHZWod+pFJzaIzpLKulsmeq1wV72/NEPxb7VaUhlOs+x5x8jLSQ27bBf1K14B2bUcwEGIsT8OqNmE0Hm1PTkl0/Qz50XSxSmhTzGh7eb1NMVb9zhQdYbJycDSI+fxG+3m45SGOSNzCLpe2ssFySVYX+rNmu4K9hO4HtbUP2cCCDwLnsCW9+Ub0ROph0q1B3KuL8GsQtufGxvcjihRNnixz9iUCOqYC4fp4QXRhBwRHXcb8GAPcwvdpVU4GewNOMl87TKWb42KOLJqErMn5lbs8SQ4Q9bN5fkweMXvcKyTJ7Ea9A0mJL3l80RQyTJ+0B2J4NwVevsDdIK2Ex7i5awYZl99zu3F5RBvcL90C4HGFKtxCuDpJGyi3Hg3eF9ThIaZ3/xin+yM9nPFrS/HKGepzZj0Jt0ptKMV4kF3tyWpRlX8K1aaUZQaRDXbp9q+0hQrmbM8iMb37BaXbOCsP3iSG3DpIfMdnLQc2mxSu7fIEJrRpJWTHSjTL0mBtfqLEwfAPQlBbdZUc5QIRpCSFGG+hic4VXFC8itoqON1NpSg+HqJlJfH0cfzvc/w4ytHDER71pqzZz+OMPoOQ="
