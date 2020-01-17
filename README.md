@@ -1,5 +1,5 @@
 <!--
-Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
+Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ to use Keycloak Authorization Services to protect Pravega streams.
 Follow this procedure to connect to a Pravega cluster that is protected by Keycloak.
 
 ### 1. Update application dependencies
-Update your dependencies to link to the `pravega-keycloak-client` library, which is hosted in the `jcenter` repository.
+Update your dependencies to link to the `pravega-keycloak-client` library, which is hosted in the `jcenter` repository. 
 
 For example, in Gradle:
 ```
@@ -27,8 +27,8 @@ repositories {
     mavenCentral()
 }
 dependencies {
-    implementation "io.pravega:pravega-client:0.6.0"
-    implementation "io.pravega:pravega-keycloak-client:0.6.0"
+    implementation "io.pravega:pravega-client:0.6.1"
+    implementation "io.pravega:pravega-keycloak-client:0.6.1"
 }
 ```
 
