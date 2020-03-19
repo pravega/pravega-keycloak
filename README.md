@@ -27,8 +27,8 @@ repositories {
     mavenCentral()
 }
 dependencies {
-    implementation "io.pravega:pravega-client:0.6.1"
-    implementation "io.pravega:pravega-keycloak-client:0.6.1"
+    implementation "io.pravega:pravega-client:0.7.0"
+    implementation "io.pravega:pravega-keycloak-client:0.7.0"
 }
 ```
 
