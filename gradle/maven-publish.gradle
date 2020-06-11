@@ -1,0 +1,91 @@
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+
+/*signing {
+    // According to https://docs.gradle.org/current/userguide/signing_plugin.html,
+    // "This will create a task (of type Sign) in the project named signMavenJavaPublication that will build all 
+    // artifacts that are part of the publication (if needed) and then generate signatures for them."
+    sign publishing.publications.mavenJava
+}*/
+
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            pom {
+                name = 'Pravega Keycloak Adapter (Client)'
+                url = 'http://pravega.io'
+                scm {
+                    url = 'https://github.com/pravega/pravega-keycloak/tree/master'
+                    connection = 'scm:git:git://github.com/pravega/pravega-keycloak.git'
+                    developerConnection = 'scm:git:https://github.com/pravega/pravega-keycloak.git'
+                }
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+            }
+
+            // Declares coordinates for publishing
+            groupId = 'io.pravega'
+            artifactId = 'pravega-keycloak-client'
+
+            // Add artifacts to the list of publications
+            artifact source: shadowJar, classifier: null
+            artifact sourceJar
+        }
+    }
+
+    repositories {
+        maven {
+            name = "myRepo"
+            url = "file://${buildDir}/repo"
+        }
+    }
+}
+
+
+
+
+/*artifactory {
+        contextUrl = publishUrl
+        publish {
+            repository {
+                if (publishRepo?.trim()) {
+                    repoKey = publishRepo
+                }
+                else if ("https://oss.jfrog.org" == "$publishUrl") {
+                    repoKey = project.version.endsWith("-SNAPSHOT") ? "oss-snapshot-local" : "oss-release-local"
+                }
+                username = publishUsername
+                password = publishPassword
+            }
+            defaults {
+                publications('lib')
+            }
+        }
+        resolve {
+            repoKey = 'jcenter'
+        }
+        clientConfig.info.setBuildNumber(project.version)
+    }
+
+    bintray {
+        user = publishUsername
+        key = publishPassword
+        pkg {
+            repo = bintrayRepoName
+            userOrg = bintrayOrgName
+            licenses = ['Apache-2.0']
+            publish = true
+            vcsUrl = 'https://github.com/pravega/pravega-keycloak.git'
+            version {
+                gpg {
+                    sign = true
+                }
+            }
+        }
+        publications = ['lib']
+    }*/

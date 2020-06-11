@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2019 Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,14 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ConfigureShadowRelocatio
 buildscript {
     repositories {
         jcenter()
+        mavenCentral()
     }
 }
 
 plugins {
     id 'com.github.johnrengelman.shadow' version '5.1.0'
-    id "com.jfrog.bintray" version "1.8.4"
-    id 'com.jfrog.artifactory' version '4.10.0'
     id 'org.ajoberstar.grgit' version '3.1.1'
+    // id 'signing'
 }
 
 apply from: "$rootDir/gradle/version.gradle"
@@ -32,9 +32,6 @@ allprojects {
 subprojects {
     apply plugin: 'java-library'
     apply plugin: 'com.github.johnrengelman.shadow'
-    apply plugin: 'maven-publish'
-    apply plugin: 'com.jfrog.artifactory'
-    apply plugin: 'signing'
 
     repositories {
         jcenter()
@@ -43,7 +40,9 @@ subprojects {
     group "io.pravega"
     sourceCompatibility = '1.8'
 
-    task sourcesJar(type: Jar) {
+
+    // Creates a Jar with Java source files
+    task sourceJar(type: Jar) {
         from sourceSets.main.allJava
         archiveClassifier = 'sources'
     }
@@ -59,75 +58,11 @@ subprojects {
         }
     }
     check.dependsOn jacocoTestReport
-
-//    signing {
-//        sign publishing.publications
-//    }
-
-    publishing {
-        publications {
-            lib(MavenPublication) {
-                pom {
-                    url = 'http://pravega.io'
-                    scm {
-                        url = 'https://github.com/pravega/pravega-keycloak/tree/master'
-                        connection = 'scm:git:git://github.com/pravega/pravega-keycloak.git'
-                        developerConnection = 'scm:git:https://github.com/pravega/pravega-keycloak.git'
-                    }
-                    licenses {
-                        license {
-                            name = 'The Apache License, Version 2.0'
-                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    artifactory {
-        contextUrl = publishUrl
-        publish {
-            repository {
-                if (publishRepo?.trim()) {
-                    repoKey = publishRepo
-                }
-                else if ("https://oss.jfrog.org" == "$publishUrl") {
-                    repoKey = project.version.endsWith("-SNAPSHOT") ? "oss-snapshot-local" : "oss-release-local"
-                }
-                username = publishUsername
-                password = publishPassword
-            }
-            defaults {
-                publications('lib')
-            }
-        }
-        resolve {
-            repoKey = 'jcenter'
-        }
-        clientConfig.info.setBuildNumber(project.version)
-    }
-
-    bintray {
-        user = publishUsername
-        key = publishPassword
-        pkg {
-            repo = bintrayRepoName
-            userOrg = bintrayOrgName
-            licenses = ['Apache-2.0']
-            publish = true
-            vcsUrl = 'https://github.com/pravega/pravega-keycloak.git'
-            version {
-                gpg {
-                    sign = true
-                }
-            }
-        }
-        publications = ['lib']
-    }
 }
 
 project('client') {
+    apply from: "$rootDir/gradle/maven-publish.gradle"
+    
     configurations {
         implementation {
             exclude group: 'org.projectlombok', module: 'lombok'
@@ -158,18 +93,4 @@ project('client') {
     jar.enabled = false
     tasks.shadowJar.dependsOn tasks.relocateShadowJar
     tasks.build.dependsOn tasks.shadowJar
-
-    publishing {
-        publications {
-            lib(MavenPublication) {
-                artifactId = 'pravega-keycloak-client'
-                artifact source: shadowJar, classifier: null
-                artifact sourcesJar
-                pom {
-                    name = 'Pravega Keycloak Adapter (Client)'
-                }
-            }
-        }
-    }
-    bintray.pkg.name = "io.pravega:pravega-keycloak-client"
 }

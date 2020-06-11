@@ -1,0 +1,198 @@
+/**
+ * Copyright (c) 2019 Dell Inc., or its subsidiaries. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ */
+
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+plugins.withId('maven') {
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+                // Only configure publishing if a URL was provided
+                // Only configure publishing if a URL was provided
+                if (project.hasProperty("publishUrl")) {
+                    if (publishUrl == "mavenCentral") {
+                        repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                            authentication(userName: publishUsername, password: publishPassword)
+                        }
+                        snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                            authentication(userName: publishUsername, password: publishPassword)
+                        }
+                    }
+                    else if (publishUrl == "jcenterSnapshot") {
+                        repository(url: "https://oss.jfrog.org/artifactory/oss-snapshot-local/") {
+                            if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
+                                authentication(userName: publishUsername, password: publishPassword)
+                            }
+                        }
+                    }
+                    else {
+                        repository(url: publishUrl) {
+                            // Only configure credentials if they are provided (allows publishing to the filesystem)
+                            if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
+                                authentication(userName: publishUsername, password: publishPassword)
+                            }
+                        }
+                    }
+                }
+
+                pom.artifactId = "pravega" + project.path.replace(':', '-')
+                pom.project {
+                    name "Pravega"
+                    url "http://pravega.io"
+                    description "Streaming Storage Platform"
+                    scm {
+                        url 'https://github.com/pravega/pravega/tree/master'
+                        connection 'scm:git:git://github.com/pravega/pravega.git'
+                        developerConnection 'scm:git:https://github.com/pravega/pravega.git'
+                    }
+                    licenses {
+                        license {
+                            name 'The Apache License, Version 2.0'
+                            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id 'fpj'
+                            name 'Flavio Junqueira'
+                        }
+                    }
+                }
+
+                // Sign the POM when the signing plugin is present
+                plugins.withId('signing') {
+                    if (project.hasProperty('doSigning')) {
+                        beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+                    }
+                }
+            }
+        }
+    }
+
+    install {
+        repositories {
+            mavenInstaller {
+                pom.artifactId = "pravega" + project.path.replace(':', '-')
+            }
+        }
+    }
+
+    task publish(dependsOn:'uploadArchives') {
+    }
+}
+
+/*
+if (project.hasProperty("doSigning")) {
+    if (doSigning == "true") {
+        signing {
+            sign shadowJar
+            // sign sourceJar
+        }
+        artifacts {
+            shadow signShadowJar.singleSignature
+            // shadow signSourceJar.singleSignature
+        }
+
+        // Default the secretKeyRingFile to the current user's home
+        if (!project.property("signing.secretKeyRingFile")) {
+            def secretKeyPath = project.file("${System.getProperty("user.home")}/.gnupg/secring.gpg").absolutePath
+            project.setProperty("signing.secretKeyRingFile", secretKeyPath)
+        }
+    }    
+}
+
+uploadArchives.enabled = false
+uploadShadow {
+    repositories {
+        mavenDeployer {
+            // Only configure publishing if a URL was provided
+            if (project.hasProperty("publishUrl")) {
+                if (publishUrl == "mavenCentral") {
+                    repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                        authentication(userName: publishUsername, password: publishPassword)
+                    }
+                    snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                        authentication(userName: publishUsername, password: publishPassword)
+                    }
+                }
+                else if (publishUrl == "jcenterSnapshot") {
+                    repository(url: "https://oss.jfrog.org/artifactory/oss-snapshot-local/") {
+                        if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
+                            authentication(userName: publishUsername, password: publishPassword)
+                        }
+                    }
+                }
+                else {
+                    repository(url: publishUrl) {
+                        // Only configure credentials if they are provided (allows publishing to the filesystem)
+                        if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
+                            authentication(userName: publishUsername, password: publishPassword)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+task publishToRepo(dependsOn: uploadShadow) {
+    description = "Publish all artifacts to repository"
+}
+
+tasks.withType(Upload) {
+    repositories.withType(MavenResolver) {
+        pom.project {
+            name "Pravega Keycloak Client"
+            url "http://pravega.io"
+            description "Streaming Storage Platform"
+            scm {
+                url 'https://github.com/pravega/pravega-keycloak/tree/master'
+                connection 'scm:git:git://github.com/pravega/pravega-keycloak.git'
+                developerConnection 'scm:git:https://github.com/pravega/pravega-keycloak.git'
+            }
+            licenses {
+                license {
+                    name 'The Apache License, Version 2.0'
+                    url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                }
+            }
+        }
+
+        pom.scopeMappings.mappings.remove(configurations.testCompile)
+
+        pom.withXml { xml ->
+            // add the 'provided' dependencies based on the 'shadowOnly' configuration
+            def dependenciesNode = xml.asNode().appendNode('dependencies')
+            project.configurations.shadowOnly.allDependencies.each { dep ->
+                if (!(dep instanceof SelfResolvingDependency)) {
+                    def dependencyNode = dependenciesNode.appendNode('dependency')
+                    dependencyNode.appendNode('groupId', dep.group)
+                    dependencyNode.appendNode('artifactId', dep.name)
+                    dependencyNode.appendNode('version', dep.version)
+                    dependencyNode.appendNode('scope', 'provided')
+                }
+            }
+        }
+
+        if (project.hasProperty('doSigning') && doSigning == "true") {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+        }
+    }
+}
+
+// Configure install task to use the shadow jar/pom
+install.configuration = configurations.shadow
+MavenPom pom = install.repositories.mavenInstaller.pom
+pom.scopeMappings.mappings.remove(configurations.compile)
+pom.scopeMappings.mappings.remove(configurations.runtime)
+pom.scopeMappings.addMapping(MavenPlugin.RUNTIME_PRIORITY, configurations.shadow, Conf2ScopeMappingContainer.RUNTIME)
+*/
