@@ -1,13 +1,38 @@
+/**
+ * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ */
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
-/*signing {
-    // According to https://docs.gradle.org/current/userguide/signing_plugin.html,
-    // "This will create a task (of type Sign) in the project named signMavenJavaPublication that will build all 
-    // artifacts that are part of the publication (if needed) and then generate signatures for them."
-    sign publishing.publications.mavenJava
-}*/
+if (project.hasProperty("doSigning")) {
+    if (doSigning == "true") {
+        signing {
+            // According to https://docs.gradle.org/current/userguide/signing_plugin.html,
+            // "This will create a task (of type Sign) in the project named signMavenJavaPublication that will build all
+            // artifacts that are part of the publication (if needed) and then generate signatures for them."
+            // sign publishing.publications
+            sign shadowJar
+            // sign sourceJar
+        }
+        artifacts {
+            shadow signShadowJar.singleSignature
+            // shadow signSourceJar.singleSignature
+        }
 
+        // Default the secretKeyRingFile to the current user's home
+        if (!project.property("signing.secretKeyRingFile")) {
+            def secretKeyPath = project.file("${System.getProperty("user.home")}/.gnupg/secring.gpg").absolutePath
+            project.setProperty("signing.secretKeyRingFile", secretKeyPath)
+        }
+    }
+}
 
 publishing {
     publications {
@@ -40,52 +65,37 @@ publishing {
 
     repositories {
         maven {
-            name = "myRepo"
-            url = "file://${buildDir}/repo"
+            def releasesRepoUrl
+            def snapshotsRepoUrl
+            
+            logger.info("publishRepo is: {}", publishRepo)
+            if (publishRepo == "mavenCentral") {
+                name = publishRepo
+                snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
+                releasesRepoUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+            } else if (publishRepo == "jcentral") {
+                name = publishRepo
+                snapshotsRepoUrl = "https://oss.jfrog.org/artifactory/oss-snapshot-local/"
+                releasesRepoUrl = "https://oss.jfrog.org/artifactory/oss-release-local/"
+            } else if (publishRepo == "localFileRepo") {
+                name = publishRepo
+                snapshotsRepoUrl = "file://${buildDir}/repo/snapshots"
+                releasesRepoUrl = "file://${buildDir}/repo/releases"
+            } else {
+                name = "Custom"
+                snapshotsRepoUrl = publishUrlForSnapshots
+                releasesRepoUrl = publishUrlForSnapshots
+            }
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            
+            // Repos with URL starting with "file://" don't support credentials.
+            if (project.hasProperty("publishUsername") && !publishRepo.trim().equalsIgnoreCase("localFileRepo")) {
+                logger.info("Setting credentials")
+                credentials {
+                    username = publishUsername
+                    password = publishPassword
+                }
+            }
         }
     }
 }
-
-
-
-
-/*artifactory {
-        contextUrl = publishUrl
-        publish {
-            repository {
-                if (publishRepo?.trim()) {
-                    repoKey = publishRepo
-                }
-                else if ("https://oss.jfrog.org" == "$publishUrl") {
-                    repoKey = project.version.endsWith("-SNAPSHOT") ? "oss-snapshot-local" : "oss-release-local"
-                }
-                username = publishUsername
-                password = publishPassword
-            }
-            defaults {
-                publications('lib')
-            }
-        }
-        resolve {
-            repoKey = 'jcenter'
-        }
-        clientConfig.info.setBuildNumber(project.version)
-    }
-
-    bintray {
-        user = publishUsername
-        key = publishPassword
-        pkg {
-            repo = bintrayRepoName
-            userOrg = bintrayOrgName
-            licenses = ['Apache-2.0']
-            publish = true
-            vcsUrl = 'https://github.com/pravega/pravega-keycloak.git'
-            version {
-                gpg {
-                    sign = true
-                }
-            }
-        }
-        publications = ['lib']
-    }*/
