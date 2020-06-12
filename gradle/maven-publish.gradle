@@ -22,12 +22,6 @@ if (project.hasProperty("doSigning")) {
                     project.file("${System.getProperty("user.home")}/.gnupg/secring.gpg").absolutePath)
             println("*** Done setting secring file **")
         }
-
-        println "** Entered the signing block **[" + project.property('signing.secretKeyRingFile') + "]"
-        /*signing {
-            sign shadowJar
-            sign sourceJar
-        }*/
         signing {
             sign publishing.publications
         }
@@ -51,6 +45,12 @@ publishing {
                         url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
                     }
                 }
+                developers {
+                    developer {
+                        id = 'rsharda'
+                        name = 'Ravi Sharda'
+                    }
+                }
             }
 
             // Declares coordinates for publishing
@@ -61,6 +61,7 @@ publishing {
             // Add artifacts to the list of publications
             artifact source: shadowJar, classifier: null
             artifact sourceJar
+            artifact javadocJar
         }
     }
 

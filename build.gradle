@@ -20,7 +20,6 @@ buildscript {
 plugins {
     id 'com.github.johnrengelman.shadow' version '5.1.0'
     id 'org.ajoberstar.grgit' version '3.1.1'
-    // id 'signing'
 }
 
 apply from: "$rootDir/gradle/version.gradle"
@@ -46,7 +45,12 @@ subprojects {
         from sourceSets.main.allJava
         archiveClassifier = 'sources'
     }
-
+    
+    task javadocJar(type: Jar) {
+        classifier = 'javadoc'
+        from javadoc.destinationDir
+    }
+    
     dependencies {
         implementation platform("org.keycloak.bom:keycloak-adapter-bom:${keycloakVersion}")
     }
@@ -62,7 +66,7 @@ subprojects {
 
 project('client') {
     apply from: "$rootDir/gradle/maven-publish.gradle"
-    
+
     configurations {
         implementation {
             exclude group: 'org.projectlombok', module: 'lombok'
