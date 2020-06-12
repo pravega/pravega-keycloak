@@ -13,23 +13,23 @@ apply plugin: 'signing'
 
 if (project.hasProperty("doSigning")) {
     if (doSigning == "true") {
-        signing {
-            // According to https://docs.gradle.org/current/userguide/signing_plugin.html,
-            // "This will create a task (of type Sign) in the project named signMavenJavaPublication that will build all
-            // artifacts that are part of the publication (if needed) and then generate signatures for them."
-            // sign publishing.publications
-            sign shadowJar
-            // sign sourceJar
-        }
-        artifacts {
-            shadow signShadowJar.singleSignature
-            // shadow signSourceJar.singleSignature
+        
+        if (!project.hasProperty('signing.secretKeyRingFile') || 
+                project.property('signing.secretKeyRingFile').toString().trim().equals("")) {
+            
+            // Default the secretKeyRingFile to the current user's home
+            project.setProperty("signing.secretKeyRingFile",
+                    project.file("${System.getProperty("user.home")}/.gnupg/secring.gpg").absolutePath)
+            println("*** Done setting secring file **")
         }
 
-        // Default the secretKeyRingFile to the current user's home
-        if (!project.property("signing.secretKeyRingFile")) {
-            def secretKeyPath = project.file("${System.getProperty("user.home")}/.gnupg/secring.gpg").absolutePath
-            project.setProperty("signing.secretKeyRingFile", secretKeyPath)
+        println "** Entered the signing block **[" + project.property('signing.secretKeyRingFile') + "]"
+        /*signing {
+            sign shadowJar
+            sign sourceJar
+        }*/
+        signing {
+            sign publishing.publications
         }
     }
 }
@@ -57,6 +57,7 @@ publishing {
             groupId = 'io.pravega'
             artifactId = 'pravega-keycloak-client'
 
+            
             // Add artifacts to the list of publications
             artifact source: shadowJar, classifier: null
             artifact sourceJar
