@@ -16,11 +16,9 @@ if (project.hasProperty("doSigning")) {
         
         if (!project.hasProperty('signing.secretKeyRingFile') || 
                 project.property('signing.secretKeyRingFile').toString().trim().equals("")) {
-            
             // Default the secretKeyRingFile to the current user's home
             project.setProperty("signing.secretKeyRingFile",
                     project.file("${System.getProperty("user.home")}/.gnupg/secring.gpg").absolutePath)
-            println("*** Done setting secring file **")
         }
         signing {
             sign publishing.publications
@@ -33,6 +31,7 @@ publishing {
         mavenJava(MavenPublication) {
             pom {
                 name = 'Pravega Keycloak Adapter (Client)'
+                description = 'Keycloak-based Auth Handler for Pravega'
                 url = 'http://pravega.io'
                 scm {
                     url = 'https://github.com/pravega/pravega-keycloak/tree/master'
@@ -47,6 +46,9 @@ publishing {
                 }
                 developers {
                     developer {
+                        name = 'Christophe Balczunas'
+                    }
+                    developer {
                         id = 'rsharda'
                         name = 'Ravi Sharda'
                     }
@@ -56,7 +58,6 @@ publishing {
             // Declares coordinates for publishing
             groupId = 'io.pravega'
             artifactId = 'pravega-keycloak-client'
-
             
             // Add artifacts to the list of publications
             artifact source: shadowJar, classifier: null
