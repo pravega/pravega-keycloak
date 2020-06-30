@@ -76,10 +76,10 @@ publishing {
                 name = publishRepo
                 snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
                 releasesRepoUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
-            } else if (publishRepo == "jcentral") {
+            } else if (publishRepo == "jcenter") {
                 name = publishRepo
-                snapshotsRepoUrl = "https://oss.jfrog.org/artifactory/oss-snapshot-local/"
-                releasesRepoUrl = "https://oss.jfrog.org/artifactory/oss-release-local/"
+                snapshotsRepoUrl = publishUrl
+                releasesRepoUrl = publishUrl
             } else if (publishRepo == "localFileRepo") {
                 name = publishRepo
                 snapshotsRepoUrl = "file://${buildDir}/repo/snapshots"
