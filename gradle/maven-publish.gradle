@@ -32,9 +32,9 @@ publishing {
             pom {
                 name = 'Pravega Keycloak Adapter (Client)'
                 description = 'Keycloak-based Auth Handler for Pravega'
-                url = 'http://pravega.io'
+                url = 'https://pravega.io'
                 scm {
-                    url = 'https://github.com/pravega/pravega-keycloak/tree/master'
+                    url = 'https://github.com/pravega/pravega-keycloak/'
                     connection = 'scm:git:git://github.com/pravega/pravega-keycloak.git'
                     developerConnection = 'scm:git:https://github.com/pravega/pravega-keycloak.git'
                 }
@@ -76,6 +76,9 @@ publishing {
                 name = publishRepo
                 snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
                 releasesRepoUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+            } else if (publishRepo == "jcenterSnapshot") {
+                name = publishRepo
+                snapshotsRepoUrl = "https://oss.jfrog.org/oss-snapshot-local/"
             } else if (publishRepo == "jcenter") {
                 name = publishRepo
                 snapshotsRepoUrl = publishUrl
