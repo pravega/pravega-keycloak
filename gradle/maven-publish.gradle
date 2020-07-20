@@ -1,0 +1,107 @@
+/**
+ * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ */
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+
+if (project.hasProperty("doSigning")) {
+    if (doSigning == "true") {
+        
+        if (!project.hasProperty('signing.secretKeyRingFile') || 
+                project.property('signing.secretKeyRingFile').toString().trim().equals("")) {
+            // Default the secretKeyRingFile to the current user's home
+            project.setProperty("signing.secretKeyRingFile",
+                    project.file("${System.getProperty("user.home")}/.gnupg/secring.gpg").absolutePath)
+        }
+        signing {
+            sign publishing.publications
+        }
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            pom {
+                name = 'Pravega Keycloak Adapter (Client)'
+                description = 'Keycloak-based Auth Handler for Pravega'
+                url = 'https://pravega.io'
+                scm {
+                    url = 'https://github.com/pravega/pravega-keycloak/'
+                    connection = 'scm:git:git://github.com/pravega/pravega-keycloak.git'
+                    developerConnection = 'scm:git:https://github.com/pravega/pravega-keycloak.git'
+                }
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        name = 'Christophe Balczunas'
+                    }
+                    developer {
+                        id = 'rsharda'
+                        name = 'Ravi Sharda'
+                    }
+                }
+            }
+
+            // Declares coordinates for publishing
+            groupId = 'io.pravega'
+            artifactId = 'pravega-keycloak-client'
+            
+            // Add artifacts to the list of publications
+            artifact source: shadowJar, classifier: null
+            artifact sourceJar
+            artifact javadocJar
+        }
+    }
+
+    repositories {
+        maven {
+            def releasesRepoUrl
+            def snapshotsRepoUrl
+            
+            logger.info("publishRepo is: {}", publishRepo)
+            if (publishRepo == "mavenCentral") {
+                name = publishRepo
+                snapshotsRepoUrl = "https://oss.sonatype.org/content/repositories/snapshots/"
+                releasesRepoUrl = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+            } else if (publishRepo == "jcenterSnapshot") {
+                name = publishRepo
+                snapshotsRepoUrl = "https://oss.jfrog.org/oss-snapshot-local/"
+            } else if (publishRepo == "jcenter") {
+                name = publishRepo
+                snapshotsRepoUrl = publishUrl
+                releasesRepoUrl = publishUrl
+            } else if (publishRepo == "localFileRepo") {
+                name = publishRepo
+                snapshotsRepoUrl = "file://${buildDir}/repo/snapshots"
+                releasesRepoUrl = "file://${buildDir}/repo/releases"
+            } else {
+                name = "Custom"
+                snapshotsRepoUrl = publishUrlForSnapshots
+                releasesRepoUrl = publishUrlForSnapshots
+            }
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            
+            // Repos with URL starting with "file://" don't support credentials.
+            if (project.hasProperty("publishUsername") && !publishRepo.trim().equalsIgnoreCase("localFileRepo")) {
+                logger.info("Setting credentials")
+                credentials {
+                    username = publishUsername
+                    password = publishPassword
+                }
+            }
+        }
+    }
+}
