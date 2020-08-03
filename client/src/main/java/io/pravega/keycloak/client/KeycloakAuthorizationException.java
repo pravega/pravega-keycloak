@@ -17,7 +17,8 @@ package io.pravega.keycloak.client;
  * result in a 400 error )
  */
 public class KeycloakAuthorizationException extends RuntimeException {
-    public KeycloakAuthorizationException(Throwable e) {
-        super("Authorization failure", e);
+
+    public KeycloakAuthorizationException() {
+        super();
     }
 }

@@ -17,7 +17,7 @@ package io.pravega.keycloak.client;
  */
 public class KeycloakAuthenticationException extends RuntimeException {
 
-    public KeycloakAuthenticationException(Throwable e) {
-        super("Authentication failure", e);
+    public KeycloakAuthenticationException() {
+        super("Authentication failure");
     }
 }

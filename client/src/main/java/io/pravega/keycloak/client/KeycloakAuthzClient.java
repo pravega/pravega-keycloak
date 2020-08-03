@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 /**
  * Wrapper to manage a service account obtaining access tokens and RPTs for a given audience
@@ -40,9 +41,13 @@ public class KeycloakAuthzClient {
 
     public static final String DEFAULT_PRAVEGA_CONTROLLER_CLIENT_ID = "pravega-controller";
     private static final int DEFAULT_TOKEN_MIN_TIME_TO_LIVE_SECS = 60;
+    private static final int DEFAULT_HTTP_MAX_RETRIES = 10;
+    private static final int DEFAULT_HTTP_RETRIES_DELAY_MSECS = 5000;
 
     private final AuthzClient client;
     private final TokenCache tokenCache;
+    private int httpMaxRetries = DEFAULT_HTTP_MAX_RETRIES;
+    private int httpRetriesDelayMsecs = DEFAULT_HTTP_RETRIES_DELAY_MSECS;
 
     /**
      * Builds a Keycloak authorization client.
@@ -71,29 +76,21 @@ public class KeycloakAuthzClient {
         if (token == null) {
             // obtain an access token with which to make an authorization request
             AccessTokenResponse accResponse;
-            try {
-                accResponse = client.obtainAccessToken();
-                LOG.debug("Obtained access token from Keycloak");
-            } catch (HttpResponseException e) {
-                LOG.error("Failed to obtain access token from Keycloak", e);
-                if (e.getStatusCode() == HttpStatus.SC_BAD_REQUEST) {
-                    throw new KeycloakAuthenticationException(e);
-                }
-                throw e;
+            accResponse = withRetries( () -> client.obtainAccessToken());
+            if (accResponse == null) {
+                LOG.error("Failed to obtain access token from Keycloak");
+                throw new KeycloakAuthenticationException();
             }
+            LOG.info("Obtained access token from Keycloak");
 
             // obtain an RPT
             AuthorizationRequest request = new AuthorizationRequest();
-            try {
-                token = client.authorization(accResponse.getToken()).authorize(request);
-                LOG.debug("Obtained RPT from Keycloak");
-            } catch (HttpResponseException e) {
-                LOG.error("Failed to obtain RPT from Keycloak", e);
-                if (e.getStatusCode() == HttpStatus.SC_BAD_REQUEST) {
-                    throw new KeycloakAuthorizationException(e);
-                }
-                throw e;
+            token = withRetries( () -> client.authorization(accResponse.getToken()).authorize(request));
+            if (token == null) {
+                LOG.error("Failed to obtain RPT from Keycloak");
+                throw new KeycloakAuthorizationException();
             }
+            LOG.info("Obtained RPT from Keycloak");
 
             // update the token cache
             synchronized (tokenCache) {
@@ -103,6 +100,56 @@ public class KeycloakAuthzClient {
 
         return token.getToken();
     }
+
+    public void setHttpMaxRetries(int retries) {
+        httpMaxRetries = retries;
+    }
+
+    public void setHttpRetriesDelayMsecs(int delay) {
+        httpRetriesDelayMsecs = delay;
+    }
+
+    /**
+     * Executes a Keycloak client request with retries.
+     * HttpResponseExceptions may occur.  If the error code contained within is BAD_REQUEST,
+     * SC_UNAUTHORIZED or SC_FORBIDDEN, the request is not retried as this is an authentication error
+     * and will not be retried.
+     * Only HttpResponseExceptions with other error codes will be retried.
+     * Other exceptions will not be caught and will not be retried.
+     * @param f the client method to execute
+     * @param <T>
+     * @return
+     */
+    private <T> T withRetries(Supplier<T> f)  {
+        RuntimeException lastE = new RuntimeException();
+        for (int i = 0; i < httpMaxRetries; i++) {
+            LOG.info("Try {} of {}", i+1, httpMaxRetries);
+            try {
+                return f.get();
+            } catch (HttpResponseException e) {
+                // BAD request here actually means authentication failed
+                // ( "invalid client id/secret" ).  Do not retry those.
+                lastE = e;
+                LOG.error("Error while communicating with Keycloak: ", e);
+                int statusCode = e.getStatusCode();
+                if (statusCode == HttpStatus.SC_BAD_REQUEST ||
+                        statusCode == HttpStatus.SC_UNAUTHORIZED ||
+                        statusCode == HttpStatus.SC_FORBIDDEN ) {
+                    LOG.error("Auth error {}.  This will not be retried.", statusCode);
+                    return null;
+                }
+            }
+            try {
+                LOG.warn("Retrying...");
+                Thread.sleep(httpRetriesDelayMsecs);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        LOG.error(String.format("Could not obtain token after %d retries", DEFAULT_HTTP_MAX_RETRIES));
+        throw lastE;
+    }
+
 
     /**
      * Deserialize a raw access token into an AccessToken object.
