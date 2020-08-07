@@ -10,6 +10,7 @@
 
 package io.pravega.keycloak.client;
 
+import io.pravega.common.util.RetriesExhaustedException;
 import io.pravega.keycloak.client.KeycloakAuthzClient.TokenCache;
 import io.pravega.keycloak.client.helpers.AccessTokenBuilder;
 import io.pravega.keycloak.client.helpers.AccessTokenIssuer;
@@ -26,6 +27,7 @@ import org.keycloak.util.BasicAuthHelper;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.net.ConnectException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,7 +44,7 @@ public class KeycloakAuthzClientTest {
     private static final AccessTokenIssuer ISSUER = new AccessTokenIssuer();
 
     @Test
-    public void getRPT_caching() {
+    public void getRPTCacheHits() {
         AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
         TokenCache tokenCache = spy(new TokenCache(0));
 
@@ -67,7 +69,7 @@ public class KeycloakAuthzClientTest {
     }
 
     @Test
-    public void getRPT_error_authn() {
+    public void getRPTFailsToGetAccessToken() {
         AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
         TokenCache tokenCache = spy(new TokenCache(0));
         when(client.obtainAccessToken()).thenThrow(new HttpResponseException("", 400, "", null));
@@ -76,14 +78,13 @@ public class KeycloakAuthzClientTest {
         try {
             authzClient.getRPT();
             Assert.fail();
-        }
-        catch(KeycloakAuthenticationException e) {
+        } catch(KeycloakAuthenticationException e) {
         }
         verify(client, times(1)).obtainAccessToken();
     }
 
     @Test
-    public void getRPT_error_authz() {
+    public void getRPTCannotExchangeAccessTokenForRPT() {
         AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
         TokenCache tokenCache = spy(new TokenCache(0));
         AccessTokenResponse accessToken = accessTokenResponse();
@@ -94,33 +95,66 @@ public class KeycloakAuthzClientTest {
         try {
             authzClient.getRPT();
             Assert.fail();
+        } catch(KeycloakAuthorizationException e) {
         }
-        catch(KeycloakAuthorizationException e) {
-        }
-        verify(client, times(1)).obtainAccessToken();
+        verify(client.authorization(any()), times(1)).authorize(any());
     }
 
     @Test
-    public void getRPT_error_other() {
+    public void getRPTWithHttp500Exception() {
         AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
         TokenCache tokenCache = spy(new TokenCache(0));
-        when(client.obtainAccessToken()).thenThrow(new HttpResponseException("", 500, "", null));
 
+        when(client.obtainAccessToken()).thenThrow(new HttpResponseException("", 500, "", null));
         KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache);
         authzClient.setHttpMaxRetries(3);
-        authzClient.setHttpRetriesDelayMsecs(1);
+        authzClient.setHttpInitialDelayMs(1);
         try {
             authzClient.getRPT();
             Assert.fail();
-        }
-        catch(HttpResponseException e) {
-            int i = 0;
+        } catch(RetriesExhaustedException e) {
         }
         verify(client, times(3)).obtainAccessToken();
     }
 
     @Test
-    public void tokenCache_expiration() {
+    public void getRPTWithRuntimeConnectException() {
+        AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
+        TokenCache tokenCache = spy(new TokenCache(0));
+
+        when(client.obtainAccessToken()).thenThrow(new RuntimeException(new ConnectException()));
+        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache);
+        authzClient.setHttpMaxRetries(3);
+        authzClient.setHttpInitialDelayMs(1);
+        try {
+            authzClient.getRPT();
+            Assert.fail();
+        } catch(RetriesExhaustedException e) {
+        }
+        verify(client, times(3)).obtainAccessToken();
+    }
+
+    @Test
+    public void getRPTWithRandomRuntimeException() {
+        AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
+        TokenCache tokenCache = spy(new TokenCache(0));
+
+        when(client.obtainAccessToken()).thenThrow(new RuntimeException("bogus"));
+        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache);
+        authzClient.setHttpMaxRetries(3);
+        authzClient.setHttpInitialDelayMs(1);
+        try {
+            authzClient.getRPT();
+            Assert.fail();
+        } catch(RetriesExhaustedException e) {
+            Assert.fail();
+        } catch (RuntimeException e) {
+        }
+        verify(client, times(1)).obtainAccessToken();
+    }
+
+    @Test
+    public void tokenCacheExpiration() {
         AuthorizationResponse response;
         TokenCache tokenCache = new TokenCache(0);
 
@@ -140,14 +174,14 @@ public class KeycloakAuthzClientTest {
     }
 
     @Test
-    public void builder_defaultAudience() {
+    public void builderDefaultAudience() {
         TestSupplier supplier = new TestSupplier();
         KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE).build();
         assertEquals(DEFAULT_PRAVEGA_CONTROLLER_CLIENT_ID, supplier.configuration.getResource());
     }
 
     @Test
-    public void builder_setAudience() {
+    public void builderSetAudience() {
         TestSupplier supplier = new TestSupplier();
         KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE)
                 .withAudience("builder_setAudience").build();
@@ -155,13 +189,13 @@ public class KeycloakAuthzClientTest {
     }
 
     @Test(expected = KeycloakConfigurationException.class)
-    public void builder_noConfig() {
+    public void builderNoConfig() {
         TestSupplier supplier = new TestSupplier();
         KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).build();
     }
 
     @Test
-    public void builder_authenticator() {
+    public void builderAuthenticator() {
         TestSupplier supplier = new TestSupplier();
         KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE).build();
 

@@ -10,6 +10,7 @@
 
 package io.pravega.keycloak.client;
 
+import io.pravega.common.util.Retry;
 import org.apache.http.HttpStatus;
 import org.keycloak.authorization.client.AuthzClient;
 import org.keycloak.authorization.client.ClientAuthenticator;
@@ -27,11 +28,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
-import java.util.function.Supplier;
+import java.util.function.Predicate;
 
 /**
  * Wrapper to manage a service account obtaining access tokens and RPTs for a given audience
@@ -41,13 +43,13 @@ public class KeycloakAuthzClient {
 
     public static final String DEFAULT_PRAVEGA_CONTROLLER_CLIENT_ID = "pravega-controller";
     private static final int DEFAULT_TOKEN_MIN_TIME_TO_LIVE_SECS = 60;
-    private static final int DEFAULT_HTTP_MAX_RETRIES = 10;
-    private static final int DEFAULT_HTTP_RETRIES_DELAY_MSECS = 5000;
+    private static final int DEFAULT_HTTP_MAX_RETRIES = 20;
+    private static final int DEFAULT_HTTP_INITIAL_DELAY_MS = 100;
 
     private final AuthzClient client;
     private final TokenCache tokenCache;
-    private int httpMaxRetries = DEFAULT_HTTP_MAX_RETRIES;
-    private int httpRetriesDelayMsecs = DEFAULT_HTTP_RETRIES_DELAY_MSECS;
+    private static int httpMaxRetries = DEFAULT_HTTP_MAX_RETRIES;
+    private static int httpInitialDelayMs = DEFAULT_HTTP_INITIAL_DELAY_MS;
 
     /**
      * Builds a Keycloak authorization client.
@@ -59,6 +61,14 @@ public class KeycloakAuthzClient {
     public KeycloakAuthzClient(AuthzClient client, TokenCache tokenCache) {
         this.client = client;
         this.tokenCache = tokenCache;
+    }
+
+    public void setHttpMaxRetries(int httpMaxRetries) {
+        this.httpMaxRetries = httpMaxRetries;
+    }
+
+    public void setHttpInitialDelayMs(int httpInitialDelayMs) {
+        this.httpInitialDelayMs = httpInitialDelayMs;
     }
 
     /**
@@ -76,19 +86,23 @@ public class KeycloakAuthzClient {
         if (token == null) {
             // obtain an access token with which to make an authorization request
             AccessTokenResponse accResponse;
-            accResponse = withRetries( () -> client.obtainAccessToken());
-            if (accResponse == null) {
+            try {
+                accResponse = Retry.withExpBackoff(httpInitialDelayMs, 2, httpMaxRetries)
+                        .retryWhen(isRetryable()).run(() -> client.obtainAccessToken());
+            } catch (HttpResponseException e) {
                 LOG.error("Failed to obtain access token from Keycloak");
-                throw new KeycloakAuthenticationException();
+                throw new KeycloakAuthenticationException(e);
             }
             LOG.info("Obtained access token from Keycloak");
 
             // obtain an RPT
             AuthorizationRequest request = new AuthorizationRequest();
-            token = withRetries( () -> client.authorization(accResponse.getToken()).authorize(request));
-            if (token == null) {
+            try {
+                token = Retry.withExpBackoff(httpInitialDelayMs, 2, httpMaxRetries)
+                        .retryWhen(isRetryable()).run(() -> client.authorization(accResponse.getToken()).authorize(request));
+            } catch (HttpResponseException e) {
                 LOG.error("Failed to obtain RPT from Keycloak");
-                throw new KeycloakAuthorizationException();
+                throw new KeycloakAuthorizationException(e);
             }
             LOG.info("Obtained RPT from Keycloak");
 
@@ -101,55 +115,50 @@ public class KeycloakAuthzClient {
         return token.getToken();
     }
 
-    public void setHttpMaxRetries(int retries) {
-        httpMaxRetries = retries;
-    }
-
-    public void setHttpRetriesDelayMsecs(int delay) {
-        httpRetriesDelayMsecs = delay;
-    }
-
     /**
-     * Executes a Keycloak client request with retries.
-     * HttpResponseExceptions may occur.  If the error code contained within is BAD_REQUEST,
-     * SC_UNAUTHORIZED or SC_FORBIDDEN, the request is not retried as this is an authentication error
-     * and will not be retried.
-     * Only HttpResponseExceptions with other error codes will be retried.
-     * Other exceptions will not be caught and will not be retried.
-     * @param f the client method to execute
-     * @param <T>
+     * Predicate to determine what is retryable and what is not.
+     * HttpResponseException with error code of 400, 401, 403 are not retryable.
+     * All other HttpResponseException are retryable as well as java.net.ConnectException.
+     * All others are not retryable.
      * @return
      */
-    private <T> T withRetries(Supplier<T> f)  {
-        RuntimeException lastE = new RuntimeException();
-        for (int i = 0; i < httpMaxRetries; i++) {
-            LOG.info("Try {} of {}", i+1, httpMaxRetries);
-            try {
-                return f.get();
-            } catch (HttpResponseException e) {
-                // BAD request here actually means authentication failed
-                // ( "invalid client id/secret" ).  Do not retry those.
-                lastE = e;
-                LOG.error("Error while communicating with Keycloak: ", e);
-                int statusCode = e.getStatusCode();
+    private static Predicate<Throwable> isRetryable() {
+        return e -> {
+            Throwable rootCause = unwrap(e);
+            if (rootCause instanceof HttpResponseException) {
+                int statusCode = ((HttpResponseException) e).getStatusCode();
                 if (statusCode == HttpStatus.SC_BAD_REQUEST ||
                         statusCode == HttpStatus.SC_UNAUTHORIZED ||
                         statusCode == HttpStatus.SC_FORBIDDEN ) {
-                    LOG.error("Auth error {}.  This will not be retried.", statusCode);
-                    return null;
+                    // these are authN or authZ related errors.
+                    LOG.error("Non retryable HttpResponseException: {}", statusCode);
+                    return false;
+                } else {  // 5xx errors etc.
+                    LOG.warn("Retryable HttpResponseException:  {}", statusCode);
+                    return true;
                 }
-            }
-            try {
-                LOG.warn("Retrying...");
-                Thread.sleep(httpRetriesDelayMsecs);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        LOG.error(String.format("Could not obtain token after %d retries", DEFAULT_HTTP_MAX_RETRIES));
-        throw lastE;
+            } else if (rootCause instanceof ConnectException) {
+                LOG.warn("Retryable connection exception: {}", rootCause.getMessage(), rootCause);
+                return true;
+            } else {
+                    // random unexpected Exceptions, don't retry, these should be debugged.
+                    LOG.error("Non retryable exception: {}", e.getMessage(), rootCause);
+                    return false;
+                }
+        };
     }
 
+    /**
+     * Fully and uncondtionally unwraps an exception to get the cause.
+     * @param e the exception to unwrap
+     * @return the unwrapped exception
+     */
+    private static Throwable unwrap(Throwable e) {
+        if (e.getCause() != null) {
+            return unwrap(e.getCause());
+        }
+        return e;
+    }
 
     /**
      * Deserialize a raw access token into an AccessToken object.
@@ -255,7 +264,8 @@ public class KeycloakAuthzClient {
 
             // create the Keycloak authz client
             ClientAuthenticator authenticator = createClientAuthenticator(configuration.getResource(), (String) configuration.getCredentials().get("secret"));
-            AuthzClient client = clientSupplier.apply(configuration, authenticator);
+            AuthzClient client = Retry.withExpBackoff(httpInitialDelayMs, 2, httpMaxRetries)
+                    .retryWhen(isRetryable()).run(() -> clientSupplier.apply(configuration, authenticator));
 
             // hack: convey the intended audience by setting the configuration resource
             configuration.setResource(audience);
