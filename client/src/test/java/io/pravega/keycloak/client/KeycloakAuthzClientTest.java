@@ -106,9 +106,7 @@ public class KeycloakAuthzClientTest {
         TokenCache tokenCache = spy(new TokenCache(0));
 
         when(client.obtainAccessToken()).thenThrow(new HttpResponseException("", 500, "", null));
-        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache);
-        authzClient.setHttpMaxRetries(3);
-        authzClient.setHttpInitialDelayMs(1);
+        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache, 3, 1);
         try {
             authzClient.getRPT();
             Assert.fail();
@@ -123,9 +121,7 @@ public class KeycloakAuthzClientTest {
         TokenCache tokenCache = spy(new TokenCache(0));
 
         when(client.obtainAccessToken()).thenThrow(new RuntimeException(new ConnectException()));
-        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache);
-        authzClient.setHttpMaxRetries(3);
-        authzClient.setHttpInitialDelayMs(1);
+        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache,3, 1);
         try {
             authzClient.getRPT();
             Assert.fail();
@@ -140,9 +136,7 @@ public class KeycloakAuthzClientTest {
         TokenCache tokenCache = spy(new TokenCache(0));
 
         when(client.obtainAccessToken()).thenThrow(new RuntimeException("bogus"));
-        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache);
-        authzClient.setHttpMaxRetries(3);
-        authzClient.setHttpInitialDelayMs(1);
+        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache, 3, 1);
         try {
             authzClient.getRPT();
             Assert.fail();
