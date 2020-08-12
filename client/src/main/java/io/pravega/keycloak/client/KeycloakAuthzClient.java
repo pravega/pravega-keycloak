@@ -93,7 +93,7 @@ public class KeycloakAuthzClient {
                 throw new KeycloakAuthenticationException(e);
             }
 
-            // obtain an RPT
+            // obtain a Relying Party Token (RPT)
             AuthorizationRequest request = new AuthorizationRequest();
             try {
                 token = Retry.withExpBackoff(httpInitialDelayMs, 2, httpMaxRetries)
