@@ -104,6 +104,7 @@ public class KeycloakConfigResolver {
 
     static Optional<InputStream> string(String configString) {
         if (configString != null && configString.trim().length() > 0) {
+            LOG.debug("Loaded configuration from string");
             return Optional.of(new ByteArrayInputStream(configString.getBytes(StandardCharsets.UTF_8)));
         }
         return Optional.empty();
