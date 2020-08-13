@@ -14,12 +14,6 @@ import io.pravega.client.stream.impl.Credentials;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermissions;
-
 import static io.pravega.auth.AuthConstants.BEARER;
 
 /**
@@ -32,14 +26,15 @@ public class PravegaKeycloakCredentials implements Credentials {
 
     // The actual keycloak client won't be serialized.
     private transient KeycloakAuthzClient kc = null;
-    private String keycloakJsonString = null;
+    private final String keycloakJsonString;
 
     public PravegaKeycloakCredentials() {
         init();
+        keycloakJsonString = null;
         LOG.info("Loaded Keycloak Credentials");
     }
 
-    public PravegaKeycloakCredentials(String keycloakJsonString) {
+    public PravegaKeycloakCredentials(final String keycloakJsonString) {
         this.keycloakJsonString = keycloakJsonString;
         init();
         LOG.info("Loaded Keycloak Credentials");
@@ -59,23 +54,7 @@ public class PravegaKeycloakCredentials implements Credentials {
     private void init() {
         if (kc == null) {
             if (keycloakJsonString != null) {
-                try {
-                    // KeycloakAuthzClient requires a file. We write the authentication credentials to
-                    // a secure file and delete it immediately after initialization.
-                    final Path tempPath = Files.createTempFile("keycloak-", ".json",
-                            // Only user has permissions to the file.
-                            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
-                    try {
-                        try (PrintWriter out = new PrintWriter(tempPath.toFile())) {
-                            out.println(keycloakJsonString);
-                        }
-                        kc = KeycloakAuthzClient.builder().withConfigFile(tempPath.toString()).build();
-                    } finally {
-                        Files.delete(tempPath);
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
+                kc = KeycloakAuthzClient.builder().withConfigString(keycloakJsonString).build();
             } else {
                 kc = KeycloakAuthzClient.builder().build();
             }

@@ -25,6 +25,9 @@ import org.keycloak.util.BasicAuthHelper;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +41,7 @@ import static org.mockito.Mockito.*;
 
 public class KeycloakAuthzClientTest {
     private static final String SVC_ACCOUNT_JSON_FILE = getResourceFile("service-account.json");
+    private static final String SVC_ACCOUNT_JSON_STRING = getResourceString(getResourceFile("service-account.json"));
 //    private static final KeycloakDeployment DEPLOYMENT = KeycloakDeploymentResolver.resolve(SVC_ACCOUNT_JSON_FILE).get();
 
     private static final AccessTokenIssuer ISSUER = new AccessTokenIssuer();
@@ -76,6 +80,7 @@ public class KeycloakAuthzClientTest {
         KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache);
         authzClient.getRPT();
     }
+
     @Test(expected = KeycloakAuthorizationException.class)
     public void getRPT_error_authz() {
         AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
@@ -126,9 +131,24 @@ public class KeycloakAuthzClientTest {
     }
 
     @Test
+    public void builder_defaultAudienceFromString() {
+        TestSupplier supplier = new TestSupplier();
+        KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigString(SVC_ACCOUNT_JSON_STRING).build();
+        assertEquals(DEFAULT_PRAVEGA_CONTROLLER_CLIENT_ID, supplier.configuration.getResource());
+    }
+
+    @Test
     public void builder_setAudience() {
         TestSupplier supplier = new TestSupplier();
         KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE)
+                .withAudience("builder_setAudience").build();
+        assertEquals("builder_setAudience", supplier.configuration.getResource());
+    }
+
+    @Test
+    public void builder_setAudienceFromString() {
+        TestSupplier supplier = new TestSupplier();
+        KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigString(SVC_ACCOUNT_JSON_STRING)
                 .withAudience("builder_setAudience").build();
         assertEquals("builder_setAudience", supplier.configuration.getResource());
     }
@@ -143,6 +163,20 @@ public class KeycloakAuthzClientTest {
     public void builder_authenticator() {
         TestSupplier supplier = new TestSupplier();
         KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE).build();
+
+        Map<String, List<String>> requestParams = new HashMap<>();
+        Map<String, String> requestHeaders = new HashMap<>();
+        supplier.clientAuthenticator.configureClientCredentials(requestParams, requestHeaders);
+        assertTrue(requestHeaders.containsKey("Authorization"));
+        assertEquals(
+                requestHeaders.get("Authorization"),
+                BasicAuthHelper.createHeader("test-client", "b3f202cb-29fe-4d13-afb8-15e787c6e56c"));
+    }
+
+    @Test
+    public void builder_authenticatorFromString() {
+        TestSupplier supplier = new TestSupplier();
+        KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigString(SVC_ACCOUNT_JSON_STRING).build();
 
         Map<String, List<String>> requestParams = new HashMap<>();
         Map<String, String> requestHeaders = new HashMap<>();
@@ -193,6 +227,15 @@ public class KeycloakAuthzClientTest {
 
     private static String getResourceFile(String resourceName) {
         return new File(KeycloakAuthzClientTest.class.getClassLoader().getResource(resourceName).getFile()).getAbsolutePath();
+    }
+
+    private static String getResourceString(String resourceFilePath) {
+        try {
+            return new String(Files.readAllBytes(Paths.get(resourceFilePath)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     class TestSupplier implements BiFunction<Configuration, ClientAuthenticator, AuthzClient> {

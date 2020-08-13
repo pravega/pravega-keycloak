@@ -15,8 +15,10 @@ import org.keycloak.util.JsonSerialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -51,8 +53,29 @@ public class KeycloakConfigResolver {
      * @return a {@link Configuration} if found.
      */
     public static Optional<Configuration> resolve(String fileLocation) throws IOException {
+        return resolve(null, fileLocation);
+    }
 
-        Optional<InputStream> stream = open(fileLocation, System.getenv(), Thread.currentThread().getContextClassLoader());
+    /**
+     * Resolves a {@link Configuration} using the available methods.
+     *
+     * @param configString adapter configuration  file content as a String
+     * @return a {@link Configuration} if found.
+     */
+    public static Optional<Configuration> resolveFromString(String configString) throws IOException {
+        return resolve(configString, null);
+    }
+
+    /**
+     * Resolves a {@link Configuration} using the available methods.
+     *
+     * @param configString adapter configuration  file content as a String
+     * @param fileLocation location of an adapter configuration file
+     * @return a {@link Configuration} if found.
+     */
+    static Optional<Configuration> resolve(String configString, String fileLocation) throws IOException {
+
+        Optional<InputStream> stream = open(configString, fileLocation, System.getenv(), Thread.currentThread().getContextClassLoader());
         if (!stream.isPresent()) {
             LOG.debug("Keycloak adapter configuration not found");
             return Optional.empty();
@@ -67,14 +90,23 @@ public class KeycloakConfigResolver {
         }
     }
 
-    static Optional<InputStream> open(String fileLocation, Map<String, String> envs, ClassLoader classLoader) throws IOException {
+    static Optional<InputStream> open(String configString, String fileLocation, Map<String, String> envs, ClassLoader classLoader) throws IOException {
         Optional<InputStream> stream;
+        stream = string(configString);
+        if (stream.isPresent()) return stream;
         stream = path(fileLocation);
         if (stream.isPresent()) return stream;
         stream = env(envs);
         if (stream.isPresent()) return stream;
         stream = classpath(classLoader);
         return stream;
+    }
+
+    static Optional<InputStream> string(String configString) {
+        if (configString != null && configString.trim().length() > 0) {
+            return Optional.of(new ByteArrayInputStream(configString.getBytes(StandardCharsets.UTF_8)));
+        }
+        return Optional.empty();
     }
 
     static Optional<InputStream> path(String fileLocation) throws IOException {
