@@ -48,8 +48,8 @@ public class KeycloakAuthzClient {
 
     private final AuthzClient client;
     private final TokenCache tokenCache;
-    private int httpMaxRetries = DEFAULT_HTTP_MAX_RETRIES;
-    private int httpInitialDelayMs = DEFAULT_HTTP_INITIAL_DELAY_MS;
+    private final int httpMaxRetries;
+    private final int httpInitialDelayMs;
 
     /**
      * Builds a Keycloak authorization client.
@@ -61,10 +61,13 @@ public class KeycloakAuthzClient {
     public KeycloakAuthzClient(AuthzClient client, TokenCache tokenCache) {
         this.client = client;
         this.tokenCache = tokenCache;
+        this.httpMaxRetries = DEFAULT_HTTP_MAX_RETRIES;
+        this.httpInitialDelayMs = DEFAULT_HTTP_INITIAL_DELAY_MS;
     }
 
     public KeycloakAuthzClient(AuthzClient client, TokenCache tokenCache, int httpMaxRetries, int httpInitialDelayMs) {
-        this(client, tokenCache);
+        this.client = client;
+        this.tokenCache = tokenCache;
         this.httpMaxRetries = httpMaxRetries;
         this.httpInitialDelayMs = httpInitialDelayMs;
     }
@@ -74,7 +77,7 @@ public class KeycloakAuthzClient {
      *
      * @return a encoded RPT.
      */
-    public String getRPT() {\
+    public String getRPT() {
         AuthorizationResponse token;
         // check the token cache
         synchronized (tokenCache) {
