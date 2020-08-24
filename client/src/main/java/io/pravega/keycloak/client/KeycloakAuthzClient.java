@@ -10,6 +10,7 @@
 
 package io.pravega.keycloak.client;
 
+import io.pravega.common.util.Retry;
 import org.apache.http.HttpStatus;
 import org.keycloak.authorization.client.AuthzClient;
 import org.keycloak.authorization.client.ClientAuthenticator;
@@ -27,10 +28,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
 
 /**
  * Wrapper to manage a service account obtaining access tokens and RPTs for a given audience
@@ -40,9 +43,13 @@ public class KeycloakAuthzClient {
 
     public static final String DEFAULT_PRAVEGA_CONTROLLER_CLIENT_ID = "pravega-controller";
     private static final int DEFAULT_TOKEN_MIN_TIME_TO_LIVE_SECS = 60;
+    private static final int DEFAULT_HTTP_MAX_RETRIES = 20;
+    private static final int DEFAULT_HTTP_INITIAL_DELAY_MS = 100;
 
     private final AuthzClient client;
     private final TokenCache tokenCache;
+    private final int httpMaxRetries;
+    private final int httpInitialDelayMs;
 
     /**
      * Builds a Keycloak authorization client.
@@ -54,6 +61,15 @@ public class KeycloakAuthzClient {
     public KeycloakAuthzClient(AuthzClient client, TokenCache tokenCache) {
         this.client = client;
         this.tokenCache = tokenCache;
+        this.httpMaxRetries = DEFAULT_HTTP_MAX_RETRIES;
+        this.httpInitialDelayMs = DEFAULT_HTTP_INITIAL_DELAY_MS;
+    }
+
+    public KeycloakAuthzClient(AuthzClient client, TokenCache tokenCache, int httpMaxRetries, int httpInitialDelayMs) {
+        this.client = client;
+        this.tokenCache = tokenCache;
+        this.httpMaxRetries = httpMaxRetries;
+        this.httpInitialDelayMs = httpInitialDelayMs;
     }
 
     /**
@@ -72,27 +88,23 @@ public class KeycloakAuthzClient {
             // obtain an access token with which to make an authorization request
             AccessTokenResponse accResponse;
             try {
-                accResponse = client.obtainAccessToken();
+                accResponse = Retry.withExpBackoff(httpInitialDelayMs, 2, httpMaxRetries)
+                        .retryWhen(isRetryable()).run(() -> client.obtainAccessToken());
                 LOG.debug("Obtained access token from Keycloak");
             } catch (HttpResponseException e) {
                 LOG.error("Failed to obtain access token from Keycloak", e);
-                if (e.getStatusCode() == HttpStatus.SC_BAD_REQUEST) {
-                    throw new KeycloakAuthenticationException(e);
-                }
-                throw e;
+                throw new KeycloakAuthenticationException(e);
             }
 
-            // obtain an RPT
+            // obtain a Relying Party Token (RPT)
             AuthorizationRequest request = new AuthorizationRequest();
             try {
-                token = client.authorization(accResponse.getToken()).authorize(request);
+                token = Retry.withExpBackoff(httpInitialDelayMs, 2, httpMaxRetries)
+                        .retryWhen(isRetryable()).run(() -> client.authorization(accResponse.getToken()).authorize(request));
                 LOG.debug("Obtained RPT from Keycloak");
             } catch (HttpResponseException e) {
                 LOG.error("Failed to obtain RPT from Keycloak", e);
-                if (e.getStatusCode() == HttpStatus.SC_BAD_REQUEST) {
-                    throw new KeycloakAuthorizationException(e);
-                }
-                throw e;
+                throw new KeycloakAuthorizationException(e);
             }
 
             // update the token cache
@@ -102,6 +114,51 @@ public class KeycloakAuthzClient {
         }
 
         return token.getToken();
+    }
+
+    /**
+     * Predicate to determine what is retryable and what is not.
+     * HttpResponseException with error code of 400, 401, 403 are not retryable.
+     * All other HttpResponseException are retryable as well as java.net.ConnectException.
+     * All others are not retryable.
+     * @return
+     */
+    private static Predicate<Throwable> isRetryable() {
+        return e -> {
+            Throwable rootCause = unwrap(e);
+            if (rootCause instanceof HttpResponseException) {
+                int statusCode = ((HttpResponseException) e).getStatusCode();
+                if (statusCode == HttpStatus.SC_BAD_REQUEST ||
+                        statusCode == HttpStatus.SC_UNAUTHORIZED ||
+                        statusCode == HttpStatus.SC_FORBIDDEN ) {
+                    // these are authN or authZ related errors.
+                    LOG.error("Non retryable HttpResponseException with HTTP code: {}", statusCode);
+                    return false;
+                } else {  // 5xx errors etc.
+                    LOG.warn("Retryable HttpResponseException with HTTP code:  {}", statusCode);
+                    return true;
+                }
+            } else if (rootCause instanceof ConnectException) {
+                LOG.warn("Retryable connection exception", rootCause);
+                return true;
+            } else {
+                    // random unexpected Exceptions, don't retry, these should be debugged.
+                    LOG.error("Other non retryable exception", rootCause);
+                    return false;
+                }
+        };
+    }
+
+    /**
+     * Fully and uncondtionally unwraps an exception to get the cause.
+     * @param e the exception to unwrap
+     * @return the unwrapped exception
+     */
+    private static Throwable unwrap(Throwable e) {
+        if (e.getCause() != null) {
+            return unwrap(e.getCause());
+        }
+        return e;
     }
 
     /**
@@ -152,10 +209,14 @@ public class KeycloakAuthzClient {
         private String audience;
         private String configFile;
         private BiFunction<Configuration, ClientAuthenticator, AuthzClient> clientSupplier;
+        private int httpMaxRetries;
+        private int httpInitialDelayMs;
 
         public Builder() {
             audience = DEFAULT_PRAVEGA_CONTROLLER_CLIENT_ID;
             clientSupplier = AuthzClient::create;
+            httpMaxRetries = DEFAULT_HTTP_MAX_RETRIES;
+            httpInitialDelayMs = DEFAULT_HTTP_INITIAL_DELAY_MS;
         }
 
         /**
@@ -175,6 +236,20 @@ public class KeycloakAuthzClient {
          */
         public Builder withAudience(String audience) {
             this.audience = audience;
+            return this;
+        }
+
+        /**
+         * Sets max http retries and initial delay different than the default for
+         * the creation of the AuthzClient, as well as the calls to Keycloak inside the getRPT() method
+         * of the KeycloakAuthzClient
+         * @param httpMaxRetries maximum retries for the request
+         * @param httpInitialDelayMs initial delay between retries (will be exponentially increased by a factor of 2)
+         * @return
+         */
+        public Builder withCustomRetries(int httpMaxRetries, int httpInitialDelayMs) {
+            this.httpInitialDelayMs = httpInitialDelayMs;
+            this.httpMaxRetries = httpMaxRetries;
             return this;
         }
 
@@ -208,12 +283,13 @@ public class KeycloakAuthzClient {
 
             // create the Keycloak authz client
             ClientAuthenticator authenticator = createClientAuthenticator(configuration.getResource(), (String) configuration.getCredentials().get("secret"));
-            AuthzClient client = clientSupplier.apply(configuration, authenticator);
+            AuthzClient client = Retry.withExpBackoff(httpInitialDelayMs, 2, httpMaxRetries)
+                    .retryWhen(isRetryable()).run(() -> clientSupplier.apply(configuration, authenticator));
 
             // hack: convey the intended audience by setting the configuration resource
             configuration.setResource(audience);
 
-            return new KeycloakAuthzClient(client, new TokenCache(configuration.getTokenMinimumTimeToLive()));
+            return new KeycloakAuthzClient(client, new TokenCache(configuration.getTokenMinimumTimeToLive()), httpMaxRetries, httpInitialDelayMs);
         }
 
         /**
