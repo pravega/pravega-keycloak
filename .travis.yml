@@ -1,50 +1,30 @@
-#
-# Copyright (c) 2019 Dell Inc., or its subsidiaries. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
 language: java
 install: true
 jdk:
-  - openjdk8
-
+- openjdk8
 jobs:
   include:
-    # the secure configurations in env: is for BINTRAY_USER=<USER> and BINTRAY_KEY=<KEY> properties
-    # which will be used for publishing artifacts to snapshot repository
-    - stage: build
-      if: type IN (push, pull_request)
-      install: ./gradlew assemble
-      script: ./gradlew check
-      after_success:
-        - bash <(curl -s https://codecov.io/bash) -t c82b7db7-70b1-4264-9b8a-b74c077e974d
-
-    - stage: snapshot
-      env:
-        - secure: aU2lXO9NWMgU1LkQlzcJPs9j2WgaEnGpO359BhurHG0Oa4aS2GrX0HAlR4U1ObNy41Ji9MG1CPIWLLVV39CDEetNiv8BTRE21HqKbsGs1/FQp8m32gIAWhpJyQlFOvoiyfkudj1dqnzst/CgYxcCHRcBnZUfAMVA8eSJt5UsfOcLlMC31jHzbYMzjEB5eTB/XSlYfqo5ePknBuaee2r3KE+XbaakmCXLAJ58Zk/eNrP5FQhnytRYNxi2MxgJfNcWrZHQKAOdCK6NC5molTGDUkhyTXdut4W3zD7KB2okKjRygZsBwFB3A3vz2x2kwWob66eKtjDGwYji2uoDM1qcLBqgvogyetLRGr99Pvrj9x2LcLiAHhZGoOqxKi/eY11msgTrryUxwpdlOdAqpFU7IxL1gXcwln4d9zpEduwEHfWZ3av187JDW7T57asNVL/kBjTOmy1h3tcpdE3BoJpymjOtEnOzZUg7jmFYUi3qFLdgy5VISDuXIVdk4AXMBUCSjIIB7yoCIWKowd21A1PzIE9VYQ/SI4PPW21HP7chUaHMhz1w1RPM8ArloJsDbBUmzyWxQ4UY/pYZ9rZriDQTVhdmklZuQiPHi3E4ucW44tl8unPxq5J/VROgLOvdokRN+UGsBnocui/WT2I+ghHDImZk4QnqSW17SxeMilWiKoY=
-        - secure: YKU3q+30ZfJzL/5V8unPavl5ykfPTHApxlC3hVEtn2/ymrCOPw6PBKzOKysig5qTKcBDTNh7uMjHOk2Ak06SlPCqqxBB3GH83iQw57/dtgLTh2j83hqY12Bl4K0VaPwsta1F3WbSr2HRI5qYC3likFp2yxQA1BeIHfeTAJqIIx1IKiTvhpvuFKrIiOsUu6eyRAdfV+t3c4Rz+xKFpS62/UW9nvzI6HiTqsRCwJdYmKuDzKJ6+m7Do/aj6/1+44tWUt8OsceIvJQNdPZZ29Wt0WMv+E0zaFgWOAcvKjzLLV1nL+aNaJo7ZHcxrAghztMvVWRWxu+TqJlk11Le8JDhJYriMAK6i55cWQAMTzZSQnZu6lr4PJCeaP+iBZZ96MsjciPSGP8xy8+T5yvpp0MFFVAD4B0MLLGniUSar1nxoFHL2kg9uvZiJsousCoKIdCjjhWZyVBmEr5zWp1ThjZW6HoSWqEUs39FMuriEEcnVtEqpLQxGbB1uaDRcVTvCi3lZJNWMA8RCJoFTZ7KCtVBUnuMPhJ3C/EDNVcpwM8QKSFaXv2g37na0kOlQiM9OG/LFyErqVJvpn9YuAlsF4ecGjZrGcVDLnOh2N+NFeNsKyTtFcKKTFaVpDLh5E9A6Ei9gIkUTtU3eECRNPJ2tnpu0UHKqSCnM38DLHEzw1+DCao=
-      install: skip
-      # Pushes snapshots to https://oss.jfrog.org/oss-snapshot-local/
-      script: ./gradlew publish -PpublishRepo=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY
-
+  - stage: build
+    if: type IN (push, pull_request)
+    install: "./gradlew assemble"
+    script: "./gradlew check"
+    after_success:
+    - bash <(curl -s https://codecov.io/bash) -t c82b7db7-70b1-4264-9b8a-b74c077e974d
+  - stage: snapshot
+    env:
+    - secure: aU2lXO9NWMgU1LkQlzcJPs9j2WgaEnGpO359BhurHG0Oa4aS2GrX0HAlR4U1ObNy41Ji9MG1CPIWLLVV39CDEetNiv8BTRE21HqKbsGs1/FQp8m32gIAWhpJyQlFOvoiyfkudj1dqnzst/CgYxcCHRcBnZUfAMVA8eSJt5UsfOcLlMC31jHzbYMzjEB5eTB/XSlYfqo5ePknBuaee2r3KE+XbaakmCXLAJ58Zk/eNrP5FQhnytRYNxi2MxgJfNcWrZHQKAOdCK6NC5molTGDUkhyTXdut4W3zD7KB2okKjRygZsBwFB3A3vz2x2kwWob66eKtjDGwYji2uoDM1qcLBqgvogyetLRGr99Pvrj9x2LcLiAHhZGoOqxKi/eY11msgTrryUxwpdlOdAqpFU7IxL1gXcwln4d9zpEduwEHfWZ3av187JDW7T57asNVL/kBjTOmy1h3tcpdE3BoJpymjOtEnOzZUg7jmFYUi3qFLdgy5VISDuXIVdk4AXMBUCSjIIB7yoCIWKowd21A1PzIE9VYQ/SI4PPW21HP7chUaHMhz1w1RPM8ArloJsDbBUmzyWxQ4UY/pYZ9rZriDQTVhdmklZuQiPHi3E4ucW44tl8unPxq5J/VROgLOvdokRN+UGsBnocui/WT2I+ghHDImZk4QnqSW17SxeMilWiKoY=
+    - secure: YKU3q+30ZfJzL/5V8unPavl5ykfPTHApxlC3hVEtn2/ymrCOPw6PBKzOKysig5qTKcBDTNh7uMjHOk2Ak06SlPCqqxBB3GH83iQw57/dtgLTh2j83hqY12Bl4K0VaPwsta1F3WbSr2HRI5qYC3likFp2yxQA1BeIHfeTAJqIIx1IKiTvhpvuFKrIiOsUu6eyRAdfV+t3c4Rz+xKFpS62/UW9nvzI6HiTqsRCwJdYmKuDzKJ6+m7Do/aj6/1+44tWUt8OsceIvJQNdPZZ29Wt0WMv+E0zaFgWOAcvKjzLLV1nL+aNaJo7ZHcxrAghztMvVWRWxu+TqJlk11Le8JDhJYriMAK6i55cWQAMTzZSQnZu6lr4PJCeaP+iBZZ96MsjciPSGP8xy8+T5yvpp0MFFVAD4B0MLLGniUSar1nxoFHL2kg9uvZiJsousCoKIdCjjhWZyVBmEr5zWp1ThjZW6HoSWqEUs39FMuriEEcnVtEqpLQxGbB1uaDRcVTvCi3lZJNWMA8RCJoFTZ7KCtVBUnuMPhJ3C/EDNVcpwM8QKSFaXv2g37na0kOlQiM9OG/LFyErqVJvpn9YuAlsF4ecGjZrGcVDLnOh2N+NFeNsKyTtFcKKTFaVpDLh5E9A6Ei9gIkUTtU3eECRNPJ2tnpu0UHKqSCnM38DLHEzw1+DCao=
+    install: skip
+    script: "./gradlew publish -PpublishRepo=jcenterSnapshot -PpublishUsername=$BINTRAY_USER
+      -PpublishPassword=$BINTRAY_KEY"
 before_cache:
-  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
-  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+- rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+- rm -fr $HOME/.gradle/caches/*/plugin-resolution/
 cache:
   directories:
-    - $HOME/.gradle/caches/
-    - $HOME/.gradle/wrapper/
-
-#notifications:
-#  slack:
-#    matrix:
-#      - secure: Gv0RJx1Sa/y5fmvLNwY+2ivfWZYCM0ekrr6UAHqsegnid6P/DFZrSrfSpwvcVh2OVNH8DHLV0BoiuDJ7amtl1eMDMXz5/lLz8tFWFKaHv4yDSadm8ILY/KnYUoP4IRuM3NyKQmBrmZB9Or5KFXboG6ex6UkgbuYy0Zyl6syEe168Iw8hlCRx26Jei7/y+8eE2MIGFh09TLRZ/944YbULum9H3KQLYv8nFdPc7GmR5AK461fnwZ7iYjb7MXkCctE5Vml3p9+2Qliv1ZJqNsQeKmSFW6IhiP6pNZ1V8VJEWMQmX/nBr9745l/N+CoLQz9ajLonlxn9xHdWms4TEu1ynFk6uxEJjlcpXcvcEaKhqAKcTMl0GMMRab2m+/Vt3S/VutJnVXQmnhZGT9glLFQHwcdHNqM/LEbXtyisB7zmGImUQpF2InCwO25IXug5gv64IfOHGMzL56yNIhbRgBY9Ud4Tux+pmkV5ZxJiBkul7/FiHQX7tQLUrzQosD0oyCOmaWD7kmbt15A0TOkLgup4HE+sSS1ASwisa7J2+HsbI3Upy3rNVKuIJP0L4KSTn4HSlDlMLLcWM+nz/YCEfuwSRXJTIstotNYHdsLUZAZSYAX7ejpeiuBRed4a4AlCROeKbKKwCcSvqCOjmCaPTpwJAGeJByOXLL2hfQzpDMKCIKM=
-#    rooms:
-#      - secure: Gv0RJx1Sa/y5fmvLNwY+2ivfWZYCM0ekrr6UAHqsegnid6P/DFZrSrfSpwvcVh2OVNH8DHLV0BoiuDJ7amtl1eMDMXz5/lLz8tFWFKaHv4yDSadm8ILY/KnYUoP4IRuM3NyKQmBrmZB9Or5KFXboG6ex6UkgbuYy0Zyl6syEe168Iw8hlCRx26Jei7/y+8eE2MIGFh09TLRZ/944YbULum9H3KQLYv8nFdPc7GmR5AK461fnwZ7iYjb7MXkCctE5Vml3p9+2Qliv1ZJqNsQeKmSFW6IhiP6pNZ1V8VJEWMQmX/nBr9745l/N+CoLQz9ajLonlxn9xHdWms4TEu1ynFk6uxEJjlcpXcvcEaKhqAKcTMl0GMMRab2m+/Vt3S/VutJnVXQmnhZGT9glLFQHwcdHNqM/LEbXtyisB7zmGImUQpF2InCwO25IXug5gv64IfOHGMzL56yNIhbRgBY9Ud4Tux+pmkV5ZxJiBkul7/FiHQX7tQLUrzQosD0oyCOmaWD7kmbt15A0TOkLgup4HE+sSS1ASwisa7J2+HsbI3Upy3rNVKuIJP0L4KSTn4HSlDlMLLcWM+nz/YCEfuwSRXJTIstotNYHdsLUZAZSYAX7ejpeiuBRed4a4AlCROeKbKKwCcSvqCOjmCaPTpwJAGeJByOXLL2hfQzpDMKCIKM=
-#  email:
-#    - eron.wright@emc.com
-#    - Flavio.Junqueira@emc.com
+  - "$HOME/.gradle/caches/"
+  - "$HOME/.gradle/wrapper/"
+env:
+  global:
+  - secure: DdVbgzPjAzYSqphGwqzDhtjdh/uWhh4yT4rg7Nxhz1NyE4aJNOQWJhqBHVMem+WPbI1+FKW/W+7f/Ml1HnKLfHvFa9UYDnossCehd+OCkLx5De+MXxc/q0wQWcSBN3ze78KCBVsDJjXTL+22LPWVkuP3i6KZkXApmebTLxcRkgfauX5OtKOEZviXC4+y+uQYIQ4OQie+3vXMaFawL50QiX7T8w2Vm9ts6xB4RM0m/iPAHqtGCI7QyEYtPFkUotadU8CD+z0+/gSFTWjn3VKR6tFKlTulkd60spvIhdGifC5G3Yfl0nexzYWkRQj1OADgXSsGHkpDkIDSK6xw3mJhxzxz+3VEACsKBLOSMiW6Ig1IFBtnCQSWoRKvrqNvcfEX26JZSk9yODtUme1kQysqBNYnv9a5ynNJqGFoRn9ultLBZ2BbfwpdmUXPBqTqQTxS10xoGp8FEynGWlmkBRZkSqP9Yt2QbVcV2pgQTWL6uvoKHU/xFH+3BbTLQFe2Hdcq+uSnIf99Xrj5oiunddawlEaxeOGRlAm0OIheL4hQmbBDZPLkRywsWJpf805pp+SB0qriFYZcKQqNuUorN9m1lQ9Qu9f6nzUTJp5QoKsD98iSSL6CABFX/uc5AyPE/1iECXFzsv/0yqyCYohwAkZ7BjF6U+dwFpV5nruVIfcjhCY=
+  - secure: c5QVJFnVOBfAuPc9hMvQ8A4MInH4qDTNH/5rtzQWOUEAk0bRLXlL9sNQB7AX+cQ88/sEkrCKx4lnGBrdHd/QKwcQK+6Gq/Y3j7tzGM3drbEa42hyFZ1cNPvqEQxGyGn6fN4EGv3RRKma7wedt72bhWwPfs/DRe3JIJJ2xBzAACLIO0cL91RPXpO97HkFg0egsDhZ7/Z0dR/lU+thXUvigLF7bGzjRQoJYljg6qgKuCtjdVIhKmmUUlXOPx+xrcNpvLLAEsbjYdqR6+G7DSLnStRnuBsnzrLtzNR1Bqrnr4ZAowhLTjntwjsbF2qW/BCBYLjbIsEL8yX3YF4mPAE8ZLmlBwuFkKSNJvki4Z2N9PTZa+9x/8+aDUy+7mJ/wjOMrm6rmV6KSeDLDsxLhapS9KOIh5BQ1FwazM0kdCdKbvOsbQ3ZS6dB1cXu3DYfGIBkscpiz2BTOIfXTsymNaLqMI7kpKSmXC5497b+Bxr1YP3Y+T+kIdAhef+tIYzPT7GX2XAFTOGdx9ciW78ONuTGWlyNNUrj145+XhLxrGj2ZZlHIwMJ07vwZbQsNbKbCMBzz0ni7pYinbfNWdkZDamaMizNRDmginlIcf7WCluTymJPecEcDsXdzdepQ+6Zh9ibzJlGxSvJ1HtyF65mC0XRYmIgXCfRrHjXrU+aOzB4dEA=
