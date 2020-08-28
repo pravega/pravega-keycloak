@@ -10,6 +10,7 @@
 
 package io.pravega.keycloak.client;
 
+import com.google.common.base.Strings;
 import org.keycloak.authorization.client.Configuration;
 import org.keycloak.util.JsonSerialization;
 import org.slf4j.Logger;
@@ -103,7 +104,7 @@ public class KeycloakConfigResolver {
     }
 
     static Optional<InputStream> string(String configString) {
-        if (configString != null && configString.trim().length() > 0) {
+        if (!Strings.isNullOrEmpty(configString)) {
             LOG.debug("Loaded configuration from string");
             return Optional.of(new ByteArrayInputStream(configString.getBytes(StandardCharsets.UTF_8)));
         }

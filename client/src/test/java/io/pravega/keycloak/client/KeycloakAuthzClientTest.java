@@ -159,10 +159,12 @@ public class KeycloakAuthzClientTest {
         KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).build();
     }
 
-    @Test
-    public void builder_authenticator() {
+    void builder_authenticator(boolean isFile) {
         TestSupplier supplier = new TestSupplier();
-        KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE).build();
+        if (isFile)
+            KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE).build();
+        else
+            KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigString(SVC_ACCOUNT_JSON_STRING).build();
 
         Map<String, List<String>> requestParams = new HashMap<>();
         Map<String, String> requestHeaders = new HashMap<>();
@@ -174,17 +176,13 @@ public class KeycloakAuthzClientTest {
     }
 
     @Test
-    public void builder_authenticatorFromString() {
-        TestSupplier supplier = new TestSupplier();
-        KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigString(SVC_ACCOUNT_JSON_STRING).build();
+    public void builder_authenticatorFromFile() {
+        builder_authenticator(true);
+    }
 
-        Map<String, List<String>> requestParams = new HashMap<>();
-        Map<String, String> requestHeaders = new HashMap<>();
-        supplier.clientAuthenticator.configureClientCredentials(requestParams, requestHeaders);
-        assertTrue(requestHeaders.containsKey("Authorization"));
-        assertEquals(
-                requestHeaders.get("Authorization"),
-                BasicAuthHelper.createHeader("test-client", "b3f202cb-29fe-4d13-afb8-15e787c6e56c"));
+    @Test
+    public void builder_authenticatorFromString() {
+        builder_authenticator(false);
     }
 
     @Test
@@ -233,9 +231,8 @@ public class KeycloakAuthzClientTest {
         try {
             return new String(Files.readAllBytes(Paths.get(resourceFilePath)));
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Could not load resource path: " + resourceFilePath, e);
         }
-        return null;
     }
 
     class TestSupplier implements BiFunction<Configuration, ClientAuthenticator, AuthzClient> {
