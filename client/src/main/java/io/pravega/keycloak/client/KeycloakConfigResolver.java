@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  */
 
 package io.pravega.keycloak.client;
@@ -27,7 +27,7 @@ import java.util.Optional;
 
 /**
  * A resolver for Keycloak {@link Configuration} objects.
- * <p>
+ *
  * The following methods are attempted, in order, to load a Keycloak adapter configuration:
  * 1. an explicit file location pointing to a Keycloak adapter configuration file
  * 2. an environment variable pointing to the location of an adapter configuration file
