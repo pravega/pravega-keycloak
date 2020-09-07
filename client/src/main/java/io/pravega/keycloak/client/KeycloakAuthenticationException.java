@@ -16,7 +16,6 @@ package io.pravega.keycloak.client;
  * ( Strangely, things like providing a bad client secret result in a 400 error )
  */
 public class KeycloakAuthenticationException extends RuntimeException {
-
     public KeycloakAuthenticationException(Throwable e) {
         super("Authentication failure", e);
     }

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019 Dell Inc., or its subsidiaries. All Rights Reserved.
+# Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,8 +26,8 @@ jobs:
     - stage: snapshot
       if: branch = master AND NOT (type = pull_request)
       env:
-        - secure: "b0bjalNxVONIKDkRPVbhtVE+gbCsSYyrAOH1roGANkJzLM45ha6rQn7vbu673dtl5ZBl5M7D/MNrpGcqkFLNkitCI68vS5u/AYj3/zJ1ARowXvuzsey585ncDySPvSa4SJIyF1QZsxI7VD1rEMO5Ix8osPsfLPbCjHioIjmXeaUJ67rNcjfKcUhFANi7VeT/qrkP0NdZ+o/frxiUl7BwgaFEcQL+jLwbI6vc4T0FB9VUH/bANDNOdR7c0pyzkf/uSAv8R+PLUu1c2DEaBSlmXsI6ec90S+1rBCwPQdOQbxJMcJgxQNJxazI40G/nM+ZJz8TGDeyAcL3SKb41MwpdhVKahNotiYDma/1APcOB2NjxJYpY796cODdO+j6uC4xW1Uh8Im45OPnqeo07/o9+Djg0t5Dk0rcCar5EEFk6MYAwbaWD4vwCi4pgdneUktlhRW5+GXy1jhQCepJ8alSuEKxN1hTu3/4/Gb41wtV8gNuXKYIxniigLeSu5Vj5nP24y8kG1XcKlM0UwfTcj4TZ6W0/9ssgSXnhNPR60j2GUymx3n9Hx8jlA25XM1X8pJbwDfpI4Dp6oDOnLHoGJoE4y0g8XeMEdfgFeyg8d47Zo4bLZFvhP8kqMTzkTUR76+e5pbiCYH0DTASEyzcIBVSyGw3rPThPldSezjnX3IQsE2I="
-        - secure: "OSIHX2cBMi0FhBDI0SLUxhqqBaSX3tOOKVIrysjo+snlrXGntAyv8yXe3ppHQWZpxdF3juLzMh3d9D8BDIw0ghBvFoHHkJHZWod+pFJzaIzpLKulsmeq1wV72/NEPxb7VaUhlOs+x5x8jLSQ27bBf1K14B2bUcwEGIsT8OqNmE0Hm1PTkl0/Qz50XSxSmhTzGh7eb1NMVb9zhQdYbJycDSI+fxG+3m45SGOSNzCLpe2ssFySVYX+rNmu4K9hO4HtbUP2cCCDwLnsCW9+Ub0ROph0q1B3KuL8GsQtufGxvcjihRNnixz9iUCOqYC4fp4QXRhBwRHXcb8GAPcwvdpVU4GewNOMl87TKWb42KOLJqErMn5lbs8SQ4Q9bN5fkweMXvcKyTJ7Ea9A0mJL3l80RQyTJ+0B2J4NwVevsDdIK2Ex7i5awYZl99zu3F5RBvcL90C4HGFKtxCuDpJGyi3Hg3eF9ThIaZ3/xin+yM9nPFrS/HKGepzZj0Jt0ptKMV4kF3tyWpRlX8K1aaUZQaRDXbp9q+0hQrmbM8iMb37BaXbOCsP3iSG3DpIfMdnLQc2mxSu7fIEJrRpJWTHSjTL0mBtfqLEwfAPQlBbdZUc5QIRpCSFGG+hic4VXFC8itoqON1NpSg+HqJlJfH0cfzvc/w4ytHDER71pqzZz+OMPoOQ="
+        - secure: "XqCzLuN+Lc8BpXyRTDXyf2xDfaO1m2elrSvLvn1NSrqfHEw6fZu2bMG+KTPE/dDe7pnZj33/x4tfsRIInv4mKAY4nbc202t0bcEokSUvWK+pJ7r6fl5Gny4i5QKNzY5AbEyt1Xf2fU/cAVVk3t+L1134vhi2PAbqIsCnVKUUp8TVTgKAwPwSc6xrk3QURCi7gS3FZXBY38ZPkdhOyN6URWsbxHuIhKMd+hFhRc8N2D5o7z+iM+7eNKJS5vIrWujgIEsSSUBmsk/OHkONbWbwdnfjO0uyYdJV7bXm7qU3x2VewgOPm0zlBpjzSzhvDCJDTtF4r3VuLbJfL+Q2IxLB9wkZ3Cn8u3XajbtlWy8657+D1Z+PCpLD9EpUzM163vCwmjx/bE3zSPupu23RcOi5w2gySm4qguyv5Z+Cv0Tq+5vmtZhwn0u68DoDrtpwSbfn/mdQaTvC4gV45nKs2DIRBx2awsLSzJycARdhhea29aFRXZsXH34rQUFyaLGVfw2PO/LJIxw4C/FP87p/TZAhW2z+8r2MLAjgvRMxhj9+B4YeHV6uMn3ww5dSMhIau5boGl6knY7WUCg1uWbLPTPCDwFzTEfn783AGwtIdcA+w1NYZ7nu4uaPm4xIakyFcvWMUAoSYj0oCkBnq61/IGE2368HM25RoTh5lWcCwpWlz60="
+        - secure: "bWSW8xwrZorLm71AlzqhnoXwPtANZUdJs1dbxLPBy9mJc+yfRFVianmjO/WY4IYuiro/+vYwpK8aDBhe46I2WC6RbSBWWSWd//EsbGmnn/ElxKnQkIQ+Zz7o/ME6zFJ5/EjafnIXHrgCDL3AGD/0oCGvhbOhHN2KgPGBnPCJXvHGt3Xk5AiWpIy2rw0xO6lO7lI7RanmlkR5vVeW1a6qxyG+nS/UyQHbv1jOi1FQ1JvdYTmmlztNTyj8xaA2mnKu3Zn1fHTQ0fbFeQaKGfWqD6C/vQgiX6L708Sg3vXTfYvx2EyoxM7TfE/ncK59NXot7tVd6F765F/Mdk+2vlcQjeXAlMKKebo2hQoHM1BMab0uNWp1mdM+FVWMcpnaIRPMYysX0iHlMQx0aCmOSuDlxMwa0UrqQqMJmOSDsftC9YOa97+ixjTBk6jHVtVcyKPZdy4SeWG55Dm7NQ+1UrOb6S8iu1xCxKqJKabOBg59uOkVD3K9mDBbgfdRVeeOSfFWRcc+CqNcktRSCojH+Tm+whZGKNzE1EgJLoyQI7LJoGartJXZfi9zXbuHFxvsaEnXFh7U/XfXiheharlnJoS49RxrC5Ukww7xPTv0HRzylTqa2HIO75MCCaU9aezch2vU9ExJ2JwulL9pVgcjl/gLXwsqBlSoJdoVmHfC4WmYjBE="
       install: skip
       # Pushes snapshots to https://oss.jfrog.org/oss-snapshot-local/
       script: ./gradlew publish -PpublishRepo=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY
