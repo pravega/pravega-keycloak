@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  */
 
 package io.pravega.keycloak.client;
@@ -27,7 +27,10 @@ import org.keycloak.util.BasicAuthHelper;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.ConnectException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +44,7 @@ import static org.mockito.Mockito.*;
 
 public class KeycloakAuthzClientTest {
     private static final String SVC_ACCOUNT_JSON_FILE = getResourceFile("service-account.json");
+    private static final String SVC_ACCOUNT_JSON_STRING = getResourceString(getResourceFile("service-account.json"));
     private static final AccessTokenIssuer ISSUER = new AccessTokenIssuer();
 
     @Test
@@ -78,7 +82,7 @@ public class KeycloakAuthzClientTest {
         try {
             authzClient.getRPT();
             Assert.fail();
-        } catch(KeycloakAuthenticationException e) {
+        } catch (KeycloakAuthenticationException e) {
         }
         verify(client, times(1)).obtainAccessToken();
     }
@@ -95,7 +99,7 @@ public class KeycloakAuthzClientTest {
         try {
             authzClient.getRPT();
             Assert.fail();
-        } catch(KeycloakAuthorizationException e) {
+        } catch (KeycloakAuthorizationException e) {
         }
         verify(client.authorization(any()), times(1)).authorize(any());
     }
@@ -110,7 +114,7 @@ public class KeycloakAuthzClientTest {
         try {
             authzClient.getRPT();
             Assert.fail();
-        } catch(RetriesExhaustedException e) {
+        } catch (RetriesExhaustedException e) {
         }
         verify(client, times(3)).obtainAccessToken();
     }
@@ -121,11 +125,11 @@ public class KeycloakAuthzClientTest {
         TokenCache tokenCache = spy(new TokenCache(0));
 
         when(client.obtainAccessToken()).thenThrow(new RuntimeException(new ConnectException()));
-        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache,3, 1);
+        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache, 3, 1);
         try {
             authzClient.getRPT();
             Assert.fail();
-        } catch(RetriesExhaustedException e) {
+        } catch (RetriesExhaustedException e) {
         }
         verify(client, times(3)).obtainAccessToken();
     }
@@ -140,7 +144,7 @@ public class KeycloakAuthzClientTest {
         try {
             authzClient.getRPT();
             Assert.fail();
-        } catch(RetriesExhaustedException e) {
+        } catch (RetriesExhaustedException e) {
             Assert.fail();
         } catch (RuntimeException e) {
         }
@@ -175,9 +179,24 @@ public class KeycloakAuthzClientTest {
     }
 
     @Test
+    public void builderDefaultAudienceFromString() {
+        TestSupplier supplier = new TestSupplier();
+        KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigString(SVC_ACCOUNT_JSON_STRING).build();
+        assertEquals(DEFAULT_PRAVEGA_CONTROLLER_CLIENT_ID, supplier.configuration.getResource());
+    }
+
+    @Test
     public void builderSetAudience() {
         TestSupplier supplier = new TestSupplier();
         KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE)
+                .withAudience("builder_setAudience").build();
+        assertEquals("builder_setAudience", supplier.configuration.getResource());
+    }
+
+    @Test
+    public void builderSetAudienceFromString() {
+        TestSupplier supplier = new TestSupplier();
+        KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigString(SVC_ACCOUNT_JSON_STRING)
                 .withAudience("builder_setAudience").build();
         assertEquals("builder_setAudience", supplier.configuration.getResource());
     }
@@ -189,9 +208,12 @@ public class KeycloakAuthzClientTest {
     }
 
     @Test
-    public void builderAuthenticator() {
+    void builderAuthenticator(boolean isFile) {
         TestSupplier supplier = new TestSupplier();
-        KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE).build();
+        if (isFile)
+            KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE).build();
+        else
+            KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigString(SVC_ACCOUNT_JSON_STRING).build();
 
         Map<String, List<String>> requestParams = new HashMap<>();
         Map<String, String> requestHeaders = new HashMap<>();
@@ -200,6 +222,16 @@ public class KeycloakAuthzClientTest {
         assertEquals(
                 requestHeaders.get("Authorization"),
                 BasicAuthHelper.createHeader("test-client", "b3f202cb-29fe-4d13-afb8-15e787c6e56c"));
+    }
+
+    @Test
+    public void builder_authenticatorFromFile() {
+        builderAuthenticator(true);
+    }
+
+    @Test
+    public void builder_authenticatorFromString() {
+        builderAuthenticator(false);
     }
 
     @Test
@@ -242,6 +274,14 @@ public class KeycloakAuthzClientTest {
 
     private static String getResourceFile(String resourceName) {
         return new File(KeycloakAuthzClientTest.class.getClassLoader().getResource(resourceName).getFile()).getAbsolutePath();
+    }
+
+    private static String getResourceString(String resourceFilePath) {
+        try {
+            return new String(Files.readAllBytes(Paths.get(resourceFilePath)));
+        } catch (IOException e) {
+            throw new RuntimeException("Could not load resource path: " + resourceFilePath, e);
+        }
     }
 
     class TestSupplier implements BiFunction<Configuration, ClientAuthenticator, AuthzClient> {
