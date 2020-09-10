@@ -208,6 +208,7 @@ public class KeycloakAuthzClient {
     public static class Builder {
         private String audience;
         private String configFile;
+        private String configString;
         private BiFunction<Configuration, ClientAuthenticator, AuthzClient> clientSupplier;
         private int httpMaxRetries;
         private int httpInitialDelayMs;
@@ -225,6 +226,15 @@ public class KeycloakAuthzClient {
          */
         public Builder withConfigFile(String path) {
             this.configFile = path;
+            return this;
+        }
+
+        /**
+         * Sets the Keycloak client configuration String to use.
+         * @param configString Keycloak OIDC JSON as a String.
+         */
+        public Builder withConfigString(final String configString) {
+            this.configString = configString;
             return this;
         }
 
@@ -265,13 +275,18 @@ public class KeycloakAuthzClient {
         public KeycloakAuthzClient build() {
             Configuration configuration;
             try {
-                configuration = KeycloakConfigResolver.resolve(configFile).orElseThrow(() -> new KeycloakConfigurationException(
-                        "Unable to resolve a Keycloak client configuration for Pravega authentication purposes.\n\n" +
-                                "Use one of the following approaches to provide a client configuration (in Keycloak OIDC JSON format):\n" +
-                                "1. Use a builder method to set the path to a file.\n" +
-                                "2. Set the environment variable 'KEYCLOAK_SERVICE_ACCOUNT_FILE' to the path to a file.\n" +
-                                "3. Update the classpath to contain a resource named 'keycloak.json'.\n" +
-                                ""));
+                String errorMessage = "Unable to resolve a Keycloak client configuration for Pravega authentication purposes.\n\n" +
+                        "Use one of the following approaches to provide a client configuration (in Keycloak OIDC JSON format):\n" +
+                        "1. Use a builder method to set the keycloak OIDC config as a JSON string.\n" +
+                        "2. Use a builder method to set the path to a file.\n" +
+                        "3. Set the environment variable 'KEYCLOAK_SERVICE_ACCOUNT_FILE' to the path to a file.\n" +
+                        "4. Update the classpath to contain a resource named 'keycloak.json'.\n" +
+                        "";
+                if (configString != null) {
+                    configuration = KeycloakConfigResolver.resolveFromString(configString).orElseThrow(() -> new KeycloakConfigurationException(errorMessage));
+                } else {
+                    configuration = KeycloakConfigResolver.resolve(configFile).orElseThrow(() -> new KeycloakConfigurationException(errorMessage));
+                }
             } catch (IOException e) {
                 throw new KeycloakConfigurationException("Unexpected error in resolving or loading the Keycloak client configuration", e);
             }

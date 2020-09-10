@@ -26,8 +26,16 @@ public class PravegaKeycloakCredentials implements Credentials {
 
     // The actual keycloak client won't be serialized.
     private transient KeycloakAuthzClient kc = null;
+    private final String keycloakJsonString;
 
     public PravegaKeycloakCredentials() {
+        init();
+        keycloakJsonString = null;
+        LOG.info("Loaded Keycloak Credentials");
+    }
+
+    public PravegaKeycloakCredentials(final String keycloakJsonString) {
+        this.keycloakJsonString = keycloakJsonString;
         init();
         LOG.info("Loaded Keycloak Credentials");
     }
@@ -45,7 +53,11 @@ public class PravegaKeycloakCredentials implements Credentials {
 
     private void init() {
         if (kc == null) {
-            kc = KeycloakAuthzClient.builder().build();
+            if (keycloakJsonString != null) {
+                kc = KeycloakAuthzClient.builder().withConfigString(keycloakJsonString).build();
+            } else {
+                kc = KeycloakAuthzClient.builder().build();
+            }
         }
     }
 }
