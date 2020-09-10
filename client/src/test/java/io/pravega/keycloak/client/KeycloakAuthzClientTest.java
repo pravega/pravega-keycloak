@@ -210,11 +210,11 @@ public class KeycloakAuthzClientTest {
     @Test
     void builderAuthenticator(boolean isFile) {
         TestSupplier supplier = new TestSupplier();
-        if (isFile)
+        if (isFile) {
             KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigFile(SVC_ACCOUNT_JSON_FILE).build();
-        else
+        } else {
             KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigString(SVC_ACCOUNT_JSON_STRING).build();
-
+        }
         Map<String, List<String>> requestParams = new HashMap<>();
         Map<String, String> requestHeaders = new HashMap<>();
         supplier.clientAuthenticator.configureClientCredentials(requestParams, requestHeaders);
