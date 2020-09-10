@@ -207,7 +207,6 @@ public class KeycloakAuthzClientTest {
         KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).build();
     }
 
-    @Test
     void builderAuthenticator(boolean isFile) {
         TestSupplier supplier = new TestSupplier();
         if (isFile) {

@@ -208,7 +208,7 @@ public class KeycloakAuthzClient {
     public static class Builder {
         private String audience;
         private String configFile;
-        private String configString = null;
+        private String configString;
         private BiFunction<Configuration, ClientAuthenticator, AuthzClient> clientSupplier;
         private int httpMaxRetries;
         private int httpInitialDelayMs;
