@@ -81,9 +81,7 @@ project('client') {
 
     dependencies {
         compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
-        //compileOnly "io.pravega:pravega-shared-authplugin:${pravegaVersion}"
         compileOnly "io.pravega:pravega-shared-security:${pravegaVersion}"
-        //compileOnly "io.pravega:pravega-client:${pravegaVersion}"
         implementation 'org.keycloak:keycloak-authz-client'
 
         testImplementation 'org.keycloak:keycloak-adapter-core'
