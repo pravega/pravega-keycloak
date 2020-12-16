@@ -10,7 +10,7 @@
 
 package io.pravega.keycloak.client;
 
-import io.pravega.client.stream.impl.Credentials;
+import io.pravega.shared.security.auth.Credentials;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
