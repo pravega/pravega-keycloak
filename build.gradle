@@ -82,9 +82,10 @@ project('client') {
     dependencies {
         compileOnly "org.slf4j:slf4j-api:${slf4jVersion}"
         compileOnly "io.pravega:pravega-shared-security:${pravegaVersion}"
-        implementation 'org.keycloak:keycloak-authz-client'
+        implementation "org.keycloak:keycloak-authz-client"
+        implementation "com.google.guava:guava:${guavaVersion}"
 
-        testImplementation 'org.keycloak:keycloak-adapter-core'
+        testImplementation "org.keycloak:keycloak-adapter-core"
         testImplementation "junit:junit:${junitVersion}"
         testImplementation "org.mockito:mockito-core:${mockitoVersion}"
     }
