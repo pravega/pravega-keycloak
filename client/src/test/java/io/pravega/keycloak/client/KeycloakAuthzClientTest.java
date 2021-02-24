@@ -29,6 +29,7 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.net.ConnectException;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -45,7 +46,6 @@ import static org.mockito.Mockito.*;
 public class KeycloakAuthzClientTest {
     private static final String SVC_ACCOUNT_JSON_FILE = getResourceFile("service-account.json");
     private static final String SVC_ACCOUNT_JSON_STRING = getResourceString(getResourceFile("service-account.json"));
-    private static final AccessTokenIssuer ISSUER = new AccessTokenIssuer();
 
     @Test
     public void getRPTCacheHits() {
@@ -106,49 +106,22 @@ public class KeycloakAuthzClientTest {
 
     @Test
     public void getRPTWithHttp500Exception() {
-        AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
-        TokenCache tokenCache = spy(new TokenCache(0));
-
-        when(client.obtainAccessToken()).thenThrow(new HttpResponseException("", 500, "", null));
-        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache, 3, 1);
-        try {
-            authzClient.getRPT();
-            Assert.fail();
-        } catch (RetriesExhaustedException e) {
-        }
-        verify(client, times(3)).obtainAccessToken();
+        assertRetried(new HttpResponseException("", 500, "", null), 3);
     }
 
     @Test
     public void getRPTWithRuntimeConnectException() {
-        AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
-        TokenCache tokenCache = spy(new TokenCache(0));
+        assertRetried(new RuntimeException(new ConnectException()), 3);
+    }
 
-        when(client.obtainAccessToken()).thenThrow(new RuntimeException(new ConnectException()));
-        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache, 3, 1);
-        try {
-            authzClient.getRPT();
-            Assert.fail();
-        } catch (RetriesExhaustedException e) {
-        }
-        verify(client, times(3)).obtainAccessToken();
+    @Test
+    public void getRPTWithRuntimeUnknownHostException() {
+        assertRetried(new RuntimeException(new UnknownHostException()), 3);
     }
 
     @Test
     public void getRPTWithRandomRuntimeException() {
-        AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
-        TokenCache tokenCache = spy(new TokenCache(0));
-
-        when(client.obtainAccessToken()).thenThrow(new RuntimeException("bogus"));
-        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache, 3, 1);
-        try {
-            authzClient.getRPT();
-            Assert.fail();
-        } catch (RetriesExhaustedException e) {
-            Assert.fail();
-        } catch (RuntimeException e) {
-        }
-        verify(client, times(1)).obtainAccessToken();
+        assertRetried(new RuntimeException("bogus"), 1);
     }
 
     @Test
@@ -240,6 +213,21 @@ public class KeycloakAuthzClientTest {
         assertFalse(token.isExpired());
         assertEquals(token.getSubject(), "00000000-0000-0000-0000-000000000001");
         assertEquals(token.getPreferredUsername(), "user-1");
+    }
+
+    private void assertRetried(Exception ex, int retries) {
+        AuthzClient client = mock(AuthzClient.class, Mockito.RETURNS_DEEP_STUBS);
+        TokenCache tokenCache = spy(new TokenCache(0));
+
+        when(client.obtainAccessToken()).thenThrow(ex);
+        KeycloakAuthzClient authzClient = new KeycloakAuthzClient(client, tokenCache, 3, 1);
+        try {
+            authzClient.getRPT();
+            Assert.fail();
+        } catch (RetriesExhaustedException e) {
+        } catch (RuntimeException e) {
+        }
+        verify(client, times(retries)).obtainAccessToken();
     }
 
     private AccessTokenResponse accessTokenResponse() {

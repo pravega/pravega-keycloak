@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -138,7 +139,7 @@ public class KeycloakAuthzClient {
                     LOG.warn("Retryable HttpResponseException with HTTP code:  {}", statusCode);
                     return true;
                 }
-            } else if (rootCause instanceof ConnectException) {
+            } else if (rootCause instanceof ConnectException || rootCause instanceof UnknownHostException) {
                 LOG.warn("Retryable connection exception", rootCause);
                 return true;
             } else {
