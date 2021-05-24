@@ -70,6 +70,12 @@ subprojects {
 project('client') {
     apply from: "$rootDir/gradle/maven-publish.gradle"
 
+    tasks.withType(PublishToMavenRepository) {
+        doFirst {
+            println("Publishing ${publication.groupId}:${publication.artifactId}:${publication.version} to ${repository.url}")
+        }
+    }
+
     configurations {
         implementation {
             exclude group: 'org.projectlombok', module: 'lombok'
