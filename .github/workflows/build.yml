@@ -28,6 +28,9 @@ jobs:
         run: echo Event '${{ github.event_name }}' for branch '${{ github.ref }}'.
       - name: Checkout
         uses: actions/checkout@v2
+        with:
+          # pull all the commits, so the commit count will be correct
+          fetch-depth: 0
       - name: Cache Gradle packages
         uses: actions/cache@v2
         with:
