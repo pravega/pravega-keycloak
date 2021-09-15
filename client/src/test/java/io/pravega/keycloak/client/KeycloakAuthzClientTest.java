@@ -110,6 +110,16 @@ public class KeycloakAuthzClientTest {
     }
 
     @Test
+    public void getRPTWithHttp401Exception() {
+        assertRetried(new HttpResponseException("", 401, "", null), 1);
+    }
+
+    @Test
+    public void getRPTWithHttp403Exception() {
+        assertRetried(new HttpResponseException("", 403, "", null), 1);
+    }
+
+    @Test
     public void getRPTWithRuntimeConnectException() {
         assertRetried(new RuntimeException(new ConnectException()), 3);
     }
@@ -121,7 +131,7 @@ public class KeycloakAuthzClientTest {
 
     @Test
     public void getRPTWithRandomRuntimeException() {
-        assertRetried(new RuntimeException("bogus"), 1);
+        assertRetried(new RuntimeException("bogus"), 3);
     }
 
     @Test
