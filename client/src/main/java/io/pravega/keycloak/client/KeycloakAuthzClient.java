@@ -118,10 +118,11 @@ public class KeycloakAuthzClient {
     }
 
     /**
-     * Predicate to determine what is retryable and what is not.
+     * Predicate to determine what exception is retryable and what is not.
+     * Typically, the incoming exception will be wrapped in a RuntimeException.
+     * It is unwrapped here to look at the root cause.
      * HttpResponseException with error code of 400, 401, 403 are not retryable.
-     * All other HttpResponseException are retryable as well as java.net.ConnectException.
-     * All others are not retryable.
+     * All other HttpResponseException are retryable as well as any other non HttpResponseException exceptions.
      * @return
      */
     private static Predicate<Throwable> isRetryable() {
@@ -140,8 +141,8 @@ public class KeycloakAuthzClient {
                     return true;
                 }
             }
-            LOG.warn("Retryable exception: ", e);
-            LOG.warn("Retryable exception root cause: ", rootCause);
+            LOG.warn("Retryable exception ", e);
+            LOG.warn("Retryable exception root cause", rootCause);
             return true;
         };
     }
