@@ -118,17 +118,18 @@ public class KeycloakAuthzClient {
     }
 
     /**
-     * Predicate to determine what is retryable and what is not.
+     * Predicate to determine what exception is retryable and what is not.
+     * Typically, the incoming exception will be wrapped in a RuntimeException.
+     * It is unwrapped here to look at the root cause.
      * HttpResponseException with error code of 400, 401, 403 are not retryable.
-     * All other HttpResponseException are retryable as well as java.net.ConnectException.
-     * All others are not retryable.
+     * All other HttpResponseException are retryable as well as any other non HttpResponseException exceptions.
      * @return
      */
     private static Predicate<Throwable> isRetryable() {
         return e -> {
             Throwable rootCause = unwrap(e);
             if (rootCause instanceof HttpResponseException) {
-                int statusCode = ((HttpResponseException) e).getStatusCode();
+                int statusCode = ((HttpResponseException) rootCause).getStatusCode();
                 if (statusCode == HttpStatus.SC_BAD_REQUEST ||
                         statusCode == HttpStatus.SC_UNAUTHORIZED ||
                         statusCode == HttpStatus.SC_FORBIDDEN ) {
@@ -139,14 +140,10 @@ public class KeycloakAuthzClient {
                     LOG.warn("Retryable HttpResponseException with HTTP code:  {}", statusCode);
                     return true;
                 }
-            } else if (rootCause instanceof ConnectException || rootCause instanceof UnknownHostException) {
-                LOG.warn("Retryable connection exception", rootCause);
-                return true;
-            } else {
-                    // random unexpected Exceptions, don't retry, these should be debugged.
-                    LOG.error("Other non retryable exception", rootCause);
-                    return false;
-                }
+            }
+            LOG.warn("Retryable exception ", e);
+            LOG.warn("Retryable exception root cause", rootCause);
+            return true;
         };
     }
 
