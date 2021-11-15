@@ -43,7 +43,7 @@ subprojects {
     }
 
     group "io.pravega"
-//    sourceCompatibility = '1.8'
+    sourceCompatibility = '1.8'
 
 
     // Creates a Jar with Java source files
