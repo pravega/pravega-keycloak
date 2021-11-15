@@ -17,7 +17,7 @@ buildscript {
 }
 
 plugins {
-    id 'com.github.johnrengelman.shadow' version '5.1.0'
+    id 'com.github.johnrengelman.shadow' version '6.1.0'
     id 'org.ajoberstar.grgit' version '3.1.1'
 }
 
@@ -43,7 +43,7 @@ subprojects {
     }
 
     group "io.pravega"
-    sourceCompatibility = '1.8'
+//    sourceCompatibility = '1.8'
 
 
     // Creates a Jar with Java source files
