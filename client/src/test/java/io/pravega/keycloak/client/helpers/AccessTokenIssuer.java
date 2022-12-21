@@ -15,6 +15,7 @@ import org.keycloak.adapters.rotation.PublicKeyLocator;
 import org.keycloak.common.util.KeyUtils;
 import org.keycloak.jose.jws.JWSBuilder;
 import org.keycloak.representations.AccessToken;
+import org.keycloak.common.crypto.CryptoIntegration;
 
 import java.security.KeyPair;
 import java.security.PublicKey;
@@ -32,6 +33,7 @@ public class AccessTokenIssuer implements PublicKeyLocator {
     private final KeyPair issuerKeyPair;
 
     public AccessTokenIssuer() {
+        CryptoIntegration.init(null);
         issuerKeyPair = KeyUtils.generateRsaKeyPair(2048);
     }
 
@@ -71,7 +73,7 @@ public class AccessTokenIssuer implements PublicKeyLocator {
      * @return
      */
     private static int computeExpiration(AccessToken token, Duration expiration) {
-        int issuedAt = token.getIssuedAt();
+        int issuedAt = token.getIat().intValue();
         int expirationInSeconds = (int) expiration.toMillis() / 1000;
         return issuedAt + expirationInSeconds;
     }
