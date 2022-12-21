@@ -199,7 +199,7 @@ public class KeycloakAuthzClient {
         }
 
         boolean isTokenTimeToLiveSufficient() {
-            return token.getExpiration() - tokenMinimumTimeToLiveSecs > Time.currentTime();
+            return token.getExp() - tokenMinimumTimeToLiveSecs > Time.currentTime();
         }
     }
 
