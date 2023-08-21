@@ -17,11 +17,11 @@ import io.pravega.keycloak.client.helpers.AccessTokenIssuer;
 import org.junit.Assert;
 import org.junit.Test;
 import org.keycloak.authorization.client.AuthzClient;
-import org.keycloak.authorization.client.ClientAuthenticator;
 import org.keycloak.authorization.client.Configuration;
 import org.keycloak.authorization.client.util.HttpResponseException;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.AccessTokenResponse;
+import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.keycloak.representations.idm.authorization.AuthorizationResponse;
 import org.keycloak.util.BasicAuthHelper;
 import org.mockito.Mockito;
@@ -33,10 +33,9 @@ import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static io.pravega.keycloak.client.KeycloakAuthzClient.DEFAULT_PRAVEGA_CONTROLLER_CLIENT_ID;
 import static org.junit.Assert.*;
@@ -197,13 +196,15 @@ public class KeycloakAuthzClientTest {
         } else {
             KeycloakAuthzClient.builder().withAuthzClientSupplier(supplier).withConfigString(SVC_ACCOUNT_JSON_STRING).build();
         }
-        Map<String, List<String>> requestParams = new HashMap<>();
+        Map<String, String> formParams = new HashMap<>();
         Map<String, String> requestHeaders = new HashMap<>();
-        supplier.clientAuthenticator.configureClientCredentials(requestParams, requestHeaders);
+
+        supplier.configuration.getClientCredentialsProvider().setClientCredentials(mock(AdapterConfig.class), requestHeaders, formParams);
         assertTrue(requestHeaders.containsKey("Authorization"));
         assertEquals(
                 requestHeaders.get("Authorization"),
                 BasicAuthHelper.createHeader("test-client", "b3f202cb-29fe-4d13-afb8-15e787c6e56c"));
+        assertTrue(formParams.isEmpty());
     }
 
     @Test
@@ -281,15 +282,13 @@ public class KeycloakAuthzClientTest {
         }
     }
 
-    class TestSupplier implements BiFunction<Configuration, ClientAuthenticator, AuthzClient> {
+    class TestSupplier implements Function<Configuration, AuthzClient> {
         Configuration configuration;
-        ClientAuthenticator clientAuthenticator;
         final AuthzClient client = mock(AuthzClient.class);
 
         @Override
-        public AuthzClient apply(Configuration configuration, ClientAuthenticator clientAuthenticator) {
+        public AuthzClient apply(Configuration configuration) {
             this.configuration = configuration;
-            this.clientAuthenticator = clientAuthenticator;
             return client;
         }
     }
