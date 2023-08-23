@@ -12,15 +12,18 @@ package io.pravega.keycloak.client;
 
 import io.pravega.common.util.Retry;
 import org.apache.http.HttpStatus;
+import org.keycloak.OAuth2Constants;
 import org.keycloak.authorization.client.AuthzClient;
-import org.keycloak.authorization.client.ClientAuthenticator;
 import org.keycloak.authorization.client.Configuration;
 import org.keycloak.authorization.client.util.HttpResponseException;
 import org.keycloak.common.util.Time;
 import org.keycloak.jose.jws.JWSInput;
 import org.keycloak.jose.jws.JWSInputException;
+import org.keycloak.protocol.oidc.client.authentication.ClientCredentialsProvider;
+import org.keycloak.protocol.oidc.client.authentication.ClientIdAndSecretCredentialsProvider;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.AccessTokenResponse;
+import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.keycloak.representations.idm.authorization.AuthorizationRequest;
 import org.keycloak.representations.idm.authorization.AuthorizationResponse;
 import org.keycloak.util.BasicAuthHelper;
@@ -28,12 +31,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.ConnectException;
-import java.net.UnknownHostException;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
@@ -207,7 +207,7 @@ public class KeycloakAuthzClient {
         private String audience;
         private String configFile;
         private String configString;
-        private BiFunction<Configuration, ClientAuthenticator, AuthzClient> clientSupplier;
+        private Function<Configuration, AuthzClient> clientSupplier;
         private int httpMaxRetries;
         private int httpInitialDelayMs;
 
@@ -265,7 +265,7 @@ public class KeycloakAuthzClient {
          * Sets the Keycloak {@link AuthzClient} authz client provider.  For test purposes only.
          * @param clientSupplier a function which maps to an authz client.
          */
-        KeycloakAuthzClient.Builder withAuthzClientSupplier(BiFunction<Configuration, ClientAuthenticator, AuthzClient> clientSupplier) {
+        KeycloakAuthzClient.Builder withAuthzClientSupplier(Function<Configuration, AuthzClient> clientSupplier) {
             this.clientSupplier = clientSupplier;
             return this;
         }
@@ -295,9 +295,12 @@ public class KeycloakAuthzClient {
             }
 
             // create the Keycloak authz client
-            ClientAuthenticator authenticator = createClientAuthenticator(configuration.getResource(), (String) configuration.getCredentials().get("secret"));
+            ClientCredentialsProvider clientCredentialsProvider = createClientCredentialsProvider(configuration.isPublicClient(),
+                    configuration.getResource(),
+                    (String) configuration.getCredentials().get("secret"));
+            configuration.setClientCredentialsProvider(clientCredentialsProvider);
             AuthzClient client = Retry.withExpBackoff(httpInitialDelayMs, 2, httpMaxRetries)
-                    .retryWhen(isRetryable()).run(() -> clientSupplier.apply(configuration, authenticator));
+                    .retryWhen(isRetryable()).run(() -> clientSupplier.apply(configuration));
 
             // hack: convey the intended audience by setting the configuration resource
             configuration.setResource(audience);
@@ -306,25 +309,28 @@ public class KeycloakAuthzClient {
         }
 
         /**
-         * Creates a client authenticator which uses HTTP BASIC and client id and secret to authenticate the client.
-         *
-         * Note: this implementation captures the client id eagerly, unlike the default client authenticator used by {@link Configuration}.
-         * This is important since the {@link Configuration} must have the target audience as its resource.
-         *
-         * @return the client authenticator
+         * Creates a ClientCredentialsProvider based on the given parameters.
+         * @param isPublicClient a boolean indicating if the client is public or not
+         * @param clientId the client ID
+         * @param clientSecret the client secret
+         * @return a ClientCredentialsProvider
+         * @throws IllegalArgumentException if the client ID or client secret is not provided
          */
-        private ClientAuthenticator createClientAuthenticator(String clientId, String clientSecret) {
-            return new ClientAuthenticator() {
-                /**
-                 * Configures a given Keycloak request to use client credentials for authentication purposes.
-                 * This method is called iff a user access token isn't provided to the builder.
-                 * see: ClientIdAndSecretCredentialsProvider
-                 */
+        protected ClientCredentialsProvider createClientCredentialsProvider(boolean isPublicClient, String clientId, String clientSecret) {
+            return new ClientIdAndSecretCredentialsProvider() {
                 @Override
-                public void configureClientCredentials(Map<String, List<String>> requestParams, Map<String, String> requestHeaders) {
+                public void setClientCredentials(AdapterConfig deployment, Map<String, String> requestHeaders, Map<String, String> formParams) {
                     Objects.requireNonNull(clientId, "Client ID not provided.");
                     Objects.requireNonNull(clientSecret, "Client secret not provided.");
-                    requestHeaders.put("Authorization", BasicAuthHelper.createHeader(clientId, clientSecret));
+
+                    if (isPublicClient) {
+                        LOG.info("public client: add clientId: {} to formParams", clientId);
+                        formParams.put(OAuth2Constants.CLIENT_ID, clientId);
+                    } else {
+                        LOG.info("private client, update basic auth for clientId: {}", clientId);
+                        String authorization = BasicAuthHelper.RFC6749.createHeader(clientId, clientSecret);
+                        requestHeaders.put("Authorization", authorization);
+                    }
                 }
             };
         }
