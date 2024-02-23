@@ -17,7 +17,7 @@ buildscript {
 }
 
 plugins {
-    id 'com.github.johnrengelman.shadow' version '6.1.0'
+    id 'com.github.johnrengelman.shadow' version '8.0.0'
     id 'org.ajoberstar.grgit' version '3.1.1'
 }
 
@@ -43,8 +43,8 @@ subprojects {
     }
 
     group "io.pravega"
-    sourceCompatibility = '1.8'
 
+    sourceCompatibility = 17
 
     // Creates a Jar with Java source files
     task sourceJar(type: Jar) {
@@ -53,7 +53,7 @@ subprojects {
     }
     
     task javadocJar(type: Jar) {
-        classifier = 'javadoc'
+        archiveClassifier = 'javadoc'
         from javadoc.destinationDir
     }
     
@@ -63,8 +63,8 @@ subprojects {
 
     jacocoTestReport {
         reports {
-            xml.enabled true
-            html.enabled false
+            xml.required = true
+            html.required = false
         }
     }
     check.dependsOn jacocoTestReport
