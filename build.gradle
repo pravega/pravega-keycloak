@@ -44,7 +44,7 @@ subprojects {
 
     group "io.pravega"
 
-    sourceCompatibility = 17
+    sourceCompatibility = 11
 
     // Creates a Jar with Java source files
     task sourceJar(type: Jar) {
